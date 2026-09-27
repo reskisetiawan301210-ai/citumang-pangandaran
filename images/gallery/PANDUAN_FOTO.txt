@@ -1,0 +1,26 @@
+=======================================================
+PANDUAN MENARUH 12 FOTO ASLI CITUMANG PANGANDARAN
+=======================================================
+
+Untuk mengganti foto di galeri website dengan foto asli Anda:
+
+1. Letakkan 12 file foto di folder ini dengan nama:
+   - citumang-01.jpg
+   - citumang-02.jpg
+   - citumang-03.jpg
+   - citumang-04.jpg
+   - citumang-05.jpg
+   - citumang-06.jpg
+   - citumang-07.jpg
+   - citumang-08.jpg
+   - citumang-09.jpg
+   - citumang-10.jpg
+   - citumang-11.jpg
+   - citumang-12.jpg
+
+2. Buka file: src/data/gallery.js
+   Ubah nilai 'image' pada masing-masing item menjadi path lokal:
+   misal: image: "/images/gallery/citumang-01.jpg"
+
+3. Anda juga dapat mengubah judul (title), deskripsi (description), 
+   dan kategori (category) langsung di src/data/gallery.js!
