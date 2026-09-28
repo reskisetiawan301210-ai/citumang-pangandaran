@@ -4,7 +4,20 @@ import { resolve } from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'admin-dev-rewrite',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url === '/admin') {
+            req.url = '/admin/';
+          }
+          next();
+        });
+      }
+    }
+  ],
   server: {
     port: 3000,
     open: false

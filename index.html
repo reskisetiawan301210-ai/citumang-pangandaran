@@ -333,7 +333,11 @@
         <!-- Background Hero: Foto Pertama Asli Citumang -->
         <div class="absolute inset-0 z-0">
           <picture>
-            <source srcset="/images/citumang/hero.webp" type="image/webp"/>
+            <!-- Mobile portrait (HP): air terjun & kolam terlihat lebih penuh -->
+            <source media="(max-width: 767px)" srcset="/images/citumang/hero-mobile.webp" type="image/webp"/>
+            <source media="(max-width: 767px)" srcset="/images/citumang/hero-mobile.jpg"/>
+            <!-- Desktop landscape (PC) -->
+            <source media="(min-width: 768px)" srcset="/images/citumang/hero.webp" type="image/webp"/>
             <img
               alt="Air terjun dan kolam alami Citumang Pangandaran"
               class="w-full h-full object-cover object-center scale-105 transition-transform duration-1000 ease-out"

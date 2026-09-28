@@ -14,12 +14,17 @@ export default function Hero({ onOpenReservation }) {
     <section className="relative -mt-20 w-full min-h-[95vh] lg:min-h-screen flex items-center justify-center overflow-hidden" id="beranda">
       {/* Background Image & Overlay */}
       <div className="absolute inset-0 z-0">
-        <img
-          src={siteConfig.heroImage}
-          alt="Citumang Body Rafting Pangandaran"
-          className="w-full h-full object-cover object-center scale-105 transition-transform duration-1000 ease-out"
-          loading="eager"
-        />
+        <picture>
+          <source media="(max-width: 767px)" srcSet="/images/citumang/hero-mobile.webp" type="image/webp" />
+          <source media="(max-width: 767px)" srcSet="/images/citumang/hero-mobile.jpg" />
+          <source media="(min-width: 768px)" srcSet="/images/citumang/hero.webp" type="image/webp" />
+          <img
+            src={siteConfig.heroImage}
+            alt="Citumang Body Rafting Pangandaran"
+            className="w-full h-full object-cover object-center scale-105 transition-transform duration-1000 ease-out"
+            loading="eager"
+          />
+        </picture>
         <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/60 to-primary/40 mix-blend-multiply"></div>
         <div className="absolute inset-0 bg-radial from-transparent via-transparent to-primary/70"></div>
       </div>
