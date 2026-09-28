@@ -16,7 +16,7 @@ export const activitiesData = [
   },
   {
     id: 2,
-    title: "Berenang Santai di Air Toska",
+    title: "Berenang Santai di Air Jernih",
     tag: "Fasilitas Resmi",
     tagType: "neutral",
     image: "/images/citumang/citumang-03.jpg",

@@ -10,9 +10,9 @@ export const galleryData = [
     image: "/images/citumang/citumang-01.jpg",
     webp: "/images/citumang/citumang-01.webp",
     title: "Aliran Sungai & Air Terjun Citumang",
-    description: "Aliran air sungai berwarna toska dengan latar air terjun bertingkat dan wisatawan yang sedang berenang mengenakan rompi pelampung.",
+    description: "Aliran air sungai yang jernih dengan latar air terjun bertingkat dan wisatawan yang sedang berenang mengenakan rompi pelampung.",
     category: "Wisata Alam",
-    alt: "Aliran sungai toska dan air terjun alami di Citumang Pangandaran",
+    alt: "Aliran sungai jernih dan air terjun alami di Citumang Pangandaran",
     span: "md:col-span-8 h-80 md:h-[460px]"
   },
   {
@@ -29,7 +29,7 @@ export const galleryData = [
     id: 3,
     image: "/images/citumang/citumang-03.jpg",
     webp: "/images/citumang/citumang-03.webp",
-    title: "Berenang di Air Toska",
+    title: "Berenang di Air Jernih",
     description: "Dua wisatawan berenang mengapung mengenakan rompi pelampung di aliran sungai Citumang yang jernih.",
     category: "Aktivitas Sungai",
     alt: "Dua wisatawan berenang mengapung mengenakan rompi pelampung di sungai Citumang",
@@ -50,7 +50,7 @@ export const galleryData = [
     image: "/images/citumang/citumang-05.jpg",
     webp: "/images/citumang/citumang-05.webp",
     title: "Berenang Bersama Keluarga",
-    description: "Wisatawan dewasa dan anak berenang bersama menggunakan rompi pelampung di aliran sungai toska.",
+    description: "Wisatawan dewasa dan anak berenang bersama menggunakan rompi pelampung di aliran sungai jernih.",
     category: "Aktivitas Sungai",
     alt: "Wisatawan dewasa dan anak berenang mengenakan rompi pelampung di Citumang",
     span: "md:col-span-4 h-80 md:h-96"
@@ -60,7 +60,7 @@ export const galleryData = [
     image: "/images/citumang/citumang-06.jpg",
     webp: "/images/citumang/citumang-06.webp",
     title: "Berenang di Dalam Gua Karst",
-    description: "Wisatawan berenang di dalam lorong gua karst alami yang dialiri air toska tenang.",
+    description: "Wisatawan berenang di dalam lorong gua karst alami yang dialiri air jernih tenang.",
     category: "Gua Karst",
     alt: "Wisatawan pria berenang di dalam lorong gua karst Citumang",
     span: "md:col-span-4 h-80 md:h-96"
@@ -70,7 +70,7 @@ export const galleryData = [
     image: "/images/citumang/citumang-07.jpg",
     webp: "/images/citumang/citumang-07.webp",
     title: "Aliran Sungai di Bawah Pepohonan",
-    description: "Wisatawan berenang di air sungai toska di bawah naungan akar dan pepohonan tepi sungai.",
+    description: "Wisatawan berenang di air sungai jernih di bawah naungan akar dan pepohonan tepi sungai.",
     category: "Wisata Alam",
     alt: "Wisatawan berenang di sungai Citumang di bawah naungan akar pohon",
     span: "md:col-span-4 h-80 md:h-96"
@@ -80,9 +80,9 @@ export const galleryData = [
     image: "/images/citumang/citumang-08.jpg",
     webp: "/images/citumang/citumang-08.webp",
     title: "Kolam Alami Sungai Citumang",
-    description: "Area kolam alami sungai yang luas dengan air berwarna biru toska serta wisatawan yang sedang berenang dan berada di tepi tebing batu.",
+    description: "Area kolam alami sungai yang luas dengan air jernih serta wisatawan yang sedang berenang dan berada di tepi tebing batu.",
     category: "Wisata Alam",
-    alt: "Kolam alami sungai Citumang yang luas dengan air biru toska dan para wisatawan",
+    alt: "Kolam alami sungai Citumang yang luas dengan air jernih dan para wisatawan",
     span: "md:col-span-4 h-80 md:h-96"
   },
   {
@@ -90,7 +90,7 @@ export const galleryData = [
     image: "/images/citumang/citumang-09.jpg",
     webp: "/images/citumang/citumang-09.webp",
     title: "Aliran Ngarai Hijau Citumang",
-    description: "Pemandangan ngarai sungai tropis dengan air toska jernih, wisatawan berenang di aliran sungai dinaungi kanopi hutan lebat.",
+    description: "Pemandangan ngarai sungai tropis dengan air jernih, wisatawan berenang di aliran sungai dinaungi kanopi hutan lebat.",
     category: "Wisata Alam",
     alt: "Pemandangan aliran ngarai sungai jernih dan wisatawan berenang di Citumang",
     span: "md:col-span-4 h-80 md:h-[460px]"

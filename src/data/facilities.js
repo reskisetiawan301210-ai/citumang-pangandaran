@@ -31,7 +31,7 @@ export const facilitiesData = [
   {
     icon: "kayaking",
     title: "Full Body Rafting ±1,5 KM",
-    description: "Pengalaman pengarungan sungai toska menyusuri keindahan alami ngarai Citumang sepanjang ±1,5 kilometer."
+    description: "Pengalaman pengarungan sungai jernih menyusuri keindahan alami ngarai Citumang sepanjang ±1,5 kilometer."
   },
   {
     icon: "vest",

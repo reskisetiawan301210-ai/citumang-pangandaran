@@ -16,7 +16,7 @@ export const faqData = [
   {
     id: 2,
     question: "Jam Operasional & Waktu Terbaik Berkunjung",
-    answer: "Citumang buka setiap hari mulai pukul <strong>07:00 - 16:30 WIB</strong>. Waktu terbaik untuk kunjungan adalah pagi hari antara pukul 07:30 - 11:00 WIB saat udara masih sangat segar dan sinar matahari menembus kanopi hutan tropis menghasilkan warna pirus toska terindah di sungai."
+    answer: "Citumang buka setiap hari mulai pukul <strong>07:00 - 16:30 WIB</strong>. Waktu terbaik untuk kunjungan adalah pagi hari antara pukul 07:30 - 11:00 WIB saat udara masih sangat segar dan sinar matahari menembus kanopi hutan tropis menghasilkan warna air jernih terindah di sungai."
   },
   {
     id: 3,

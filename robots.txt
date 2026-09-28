@@ -1,4 +1,3 @@
 User-agent: *
 Allow: /
-
-Sitemap: https://citumangpangandaran.com/sitemap.xml
+Sitemap: https://citumangpangandaran.web.id/sitemap.xml
