@@ -7,8 +7,16 @@ export default defineConfig({
   plugins: [
     react(),
     {
-      name: 'admin-dev-rewrite',
+      name: 'admin-route-rewrite',
       configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url === '/admin') {
+            req.url = '/admin/';
+          }
+          next();
+        });
+      },
+      configurePreviewServer(server) {
         server.middlewares.use((req, res, next) => {
           if (req.url === '/admin') {
             req.url = '/admin/';
