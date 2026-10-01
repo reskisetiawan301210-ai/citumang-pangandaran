@@ -10,41 +10,14 @@ export function initReservationModal() {
   const modal = document.getElementById('reservation-modal');
   const form = document.getElementById('reservation-form');
   const closeBtn = document.getElementById('close-reservation-btn');
-  const packageSelect = document.getElementById('res-package');
 
   if (!modal || !form) return;
 
-  // Isi dropdown paket dari siteConfig jika kosong
-  if (packageSelect && packageSelect.children.length === 0) {
-    siteConfig.packages.forEach(pkg => {
-      const opt = document.createElement('option');
-      opt.value = pkg;
-      opt.textContent = pkg;
-      packageSelect.appendChild(opt);
-    });
-  }
-
   // Fungsi Buka Modal
-  window.openReservationModal = function (presetPackage = '') {
+  window.openReservationModal = function () {
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     document.body.classList.add('overflow-hidden');
-
-    if (presetPackage && packageSelect) {
-      // Cari option yang sesuai
-      const found = Array.from(packageSelect.options).find(opt => 
-        opt.value.toLowerCase().includes(presetPackage.toLowerCase())
-      );
-      if (found) {
-        packageSelect.value = found.value;
-      }
-    }
-
-    // Set tanggal minimal adalah hari ini
-    const dateInput = document.getElementById('res-date');
-    if (dateInput && !dateInput.value) {
-      dateInput.min = new Date().toISOString().split('T')[0];
-    }
 
     // Focus ke input nama
     const nameInput = document.getElementById('res-name');
@@ -77,12 +50,11 @@ export function initReservationModal() {
     }
   });
 
-  // Sambungkan semua elemen dengan class 'open-reservation-modal'
+  // Sambungkan semua elemen dengan data-action reservation
   document.querySelectorAll('[data-action="reservation"], a[href="#reservasi-modal"]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-      const preset = btn.getAttribute('data-package') || '';
-      window.openReservationModal(preset);
+      window.openReservationModal();
     });
   });
 
@@ -93,8 +65,6 @@ export function initReservationModal() {
 
     const nameVal = document.getElementById('res-name').value.trim();
     const phoneVal = document.getElementById('res-phone').value.trim();
-    const dateVal = document.getElementById('res-date').value;
-    const packageVal = packageSelect ? packageSelect.value : siteConfig.packages[0];
 
     let hasError = false;
 
@@ -111,37 +81,16 @@ export function initReservationModal() {
       hasError = true;
     }
 
-    if (!dateVal) {
-      showError('res-date-error', 'Pilih tanggal rencana kunjungan');
-      hasError = true;
-    }
-
     if (hasError) return;
-
-    // Format tanggal Indonesia
-    let formattedDate = dateVal;
-    try {
-      const d = new Date(dateVal);
-      formattedDate = d.toLocaleDateString('id-ID', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    } catch {
-      // fallback
-    }
 
     // Susun pesan WhatsApp otomatis
     const message = `Halo Citumang Pangandaran, saya ingin melakukan reservasi.
 
-*Detail Reservasi:*
+*Data Pengunjung:*
 • Nama: ${nameVal}
 • No. WhatsApp: ${phoneVal}
-• Tanggal Kunjungan: ${formattedDate}
-• Paket/Aktivitas: ${packageVal}
 
-Mohon informasi ketersediaan slot pemandu dan rincian pembayarannya.
+Mohon informasi ketersediaan dan rincian paket yang tersedia.
 Terima kasih!`;
 
     const encodedMessage = encodeURIComponent(message);
@@ -163,7 +112,7 @@ Terima kasih!`;
   }
 
   function clearErrors() {
-    ['res-name-error', 'res-phone-error', 'res-date-error'].forEach(id => {
+    ['res-name-error', 'res-phone-error'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
         el.textContent = '';

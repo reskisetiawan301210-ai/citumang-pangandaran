@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import { siteConfig } from '../config/siteConfig';
 
-export default function ReservationModal({ isOpen, onClose, defaultPackage = '' }) {
+export default function ReservationModal({ isOpen, onClose }) {
   const [formData, setFormData] = useState({
     name: '',
-    phone: '',
-    date: '',
-    packageType: defaultPackage || siteConfig.packages[0]
+    phone: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -31,9 +29,6 @@ export default function ReservationModal({ isOpen, onClose, defaultPackage = '' 
     } else if (!/^[0-9+-\s]{8,20}$/.test(formData.phone)) {
       newErrors.phone = 'Nomor WhatsApp tidak valid';
     }
-    if (!formData.date) {
-      newErrors.date = 'Pilih tanggal rencana kunjungan';
-    }
     return newErrors;
   };
 
@@ -45,30 +40,14 @@ export default function ReservationModal({ isOpen, onClose, defaultPackage = '' 
       return;
     }
 
-    // Format tanggal Indonesia
-    let formattedDate = formData.date;
-    try {
-      const d = new Date(formData.date);
-      formattedDate = d.toLocaleDateString('id-ID', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    } catch {
-      // fallback
-    }
-
-    // Susun pesan WhatsApp otomatis sesuai format
+    // Susun pesan WhatsApp otomatis
     const message = `Halo Citumang Pangandaran, saya ingin melakukan reservasi.
 
-*Detail Reservasi:*
+*Data Pengunjung:*
 • Nama: ${formData.name.trim()}
 • No. WhatsApp: ${formData.phone.trim()}
-• Tanggal Kunjungan: ${formattedDate}
-• Paket/Aktivitas: ${formData.packageType}
 
-Mohon informasi ketersediaan slot pemandu dan rincian pembayarannya.
+Mohon informasi ketersediaan dan rincian paket yang tersedia.
 Terima kasih!`;
 
     const encodedMessage = encodeURIComponent(message);
@@ -153,44 +132,6 @@ Terima kasih!`;
             />
             {errors.phone && <p className="text-error text-xs mt-1">{errors.phone}</p>}
           </div>
-
-          {/* Tanggal Kunjungan */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface mb-1.5">
-              Rencana Tanggal Kunjungan <span className="text-error">*</span>
-            </label>
-            <input
-              type="date"
-              name="date"
-              value={formData.date}
-              min={new Date().toISOString().split('T')[0]}
-              onChange={handleChange}
-              className={`w-full px-4 py-2.5 rounded-lg bg-surface-container-low border ${
-                errors.date ? 'border-error ring-1 ring-error' : 'border-outline-variant'
-              } text-on-surface text-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all`}
-            />
-            {errors.date && <p className="text-error text-xs mt-1">{errors.date}</p>}
-          </div>
-
-          {/* Pilihan Paket */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface mb-1.5">
-              Pilihan Aktivitas / Paket
-            </label>
-            <select
-              name="packageType"
-              value={formData.packageType}
-              onChange={handleChange}
-              className="w-full px-4 py-2.5 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface text-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all cursor-pointer"
-            >
-              {siteConfig.packages.map((pkg, idx) => (
-                <option key={idx} value={pkg}>
-                  {pkg}
-                </option>
-              ))}
-            </select>
-          </div>
-
 
           {/* Info Hotline Note */}
           <div className="bg-surface-container-low p-3 rounded-lg flex items-start gap-2.5 text-xs text-on-surface-variant">

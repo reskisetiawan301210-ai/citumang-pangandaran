@@ -37,6 +37,17 @@ let siteData = {
   gallery: []
 };
 
+// Status koneksi Firebase — melacak apakah data benar dari Firestore atau fallback default
+let firebaseStatus = {
+  envComplete: false,
+  dbInitialized: false,
+  firestoreConnected: false,
+  storageReady: false,
+  dataSource: {}, // { provider: 'firestore'|'default'|'error', ... }
+  errors: [],     // Array pesan error yang terjadi saat load
+  lastCheck: null
+};
+
 // ===== DOM SELECTORS (DYNAMIC & SAFE) =====
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -328,9 +339,22 @@ function setupSidebarNavigation() {
 
 // ===== DATA LOADING DENGAN FALLBACK AMAN =====
 async function loadAllData() {
+  firebaseStatus.lastCheck = new Date().toISOString();
+  firebaseStatus.envComplete = checkFirebaseEnv().isComplete;
+  firebaseStatus.dbInitialized = !!db;
+
   if (!db) {
+    firebaseStatus.errors.push('Database tidak terinisialisasi. Variabel VITE_FIREBASE_* mungkin kosong.');
     loadDefaultData();
     return;
+  }
+
+  try {
+    // Cek koneksi ringan dengan memanggil 1 doc (jika timeout/offline, ini akan throw)
+    await getDoc(doc(db, 'siteConfig', 'ping_check')).catch(() => {});
+    firebaseStatus.firestoreConnected = true;
+  } catch (e) {
+    firebaseStatus.firestoreConnected = false;
   }
 
   try {
@@ -338,45 +362,60 @@ async function loadAllData() {
     try {
       const provDoc = await getDoc(doc(db, 'siteConfig', 'provider'));
       siteData.provider = provDoc.exists() ? provDoc.data() : getDefaultProvider();
+      firebaseStatus.dataSource.provider = 'firestore';
     } catch (err) {
       console.warn('[Firestore] Provider default digunakan:', err.message);
       siteData.provider = getDefaultProvider();
+      firebaseStatus.dataSource.provider = 'default';
+      firebaseStatus.errors.push(`Provider: ${err.message}`);
     }
 
     // 2. Hero
     try {
       const heroDoc = await getDoc(doc(db, 'siteConfig', 'hero'));
       siteData.hero = heroDoc.exists() ? heroDoc.data() : getDefaultHero();
+      firebaseStatus.dataSource.hero = 'firestore';
     } catch (err) {
       console.warn('[Firestore] Hero default digunakan:', err.message);
       siteData.hero = getDefaultHero();
+      firebaseStatus.dataSource.hero = 'default';
+      firebaseStatus.errors.push(`Hero: ${err.message}`);
     }
 
     // 3. Info
     try {
       const infoDoc = await getDoc(doc(db, 'siteConfig', 'info'));
       siteData.info = infoDoc.exists() ? infoDoc.data() : getDefaultInfo();
+      firebaseStatus.dataSource.info = 'firestore';
     } catch (err) {
       console.warn('[Firestore] Info default digunakan:', err.message);
       siteData.info = getDefaultInfo();
+      firebaseStatus.dataSource.info = 'default';
+      firebaseStatus.errors.push(`Info: ${err.message}`);
     }
 
     // 4. Pricing
     try {
       const pricingDoc = await getDoc(doc(db, 'siteConfig', 'pricing'));
       siteData.pricing = pricingDoc.exists() ? pricingDoc.data() : getDefaultPricing();
+      firebaseStatus.dataSource.pricing = 'firestore';
     } catch (err) {
       console.warn('[Firestore] Pricing default digunakan:', err.message);
       siteData.pricing = getDefaultPricing();
+      firebaseStatus.dataSource.pricing = 'default';
+      firebaseStatus.errors.push(`Pricing: ${err.message}`);
     }
 
     // 5. Hours
     try {
       const hoursDoc = await getDoc(doc(db, 'siteConfig', 'hours'));
       siteData.hours = hoursDoc.exists() ? hoursDoc.data() : getDefaultHours();
+      firebaseStatus.dataSource.hours = 'firestore';
     } catch (err) {
       console.warn('[Firestore] Hours default digunakan:', err.message);
       siteData.hours = getDefaultHours();
+      firebaseStatus.dataSource.hours = 'default';
+      firebaseStatus.errors.push(`Hours: ${err.message}`);
     }
 
     // 6. Facilities
@@ -385,9 +424,12 @@ async function loadAllData() {
       siteData.facilities = [];
       facSnap.forEach((d) => siteData.facilities.push({ id: d.id, ...d.data() }));
       if (siteData.facilities.length === 0) siteData.facilities = getDefaultFacilities();
+      firebaseStatus.dataSource.facilities = 'firestore';
     } catch (err) {
       console.warn('[Firestore] Facilities default digunakan:', err.message);
       siteData.facilities = getDefaultFacilities();
+      firebaseStatus.dataSource.facilities = 'default';
+      firebaseStatus.errors.push(`Facilities: ${err.message}`);
     }
 
     // 7. Activities
@@ -396,9 +438,12 @@ async function loadAllData() {
       siteData.activities = [];
       actSnap.forEach((d) => siteData.activities.push({ id: d.id, ...d.data() }));
       if (siteData.activities.length === 0) siteData.activities = getDefaultActivities();
+      firebaseStatus.dataSource.activities = 'firestore';
     } catch (err) {
       console.warn('[Firestore] Activities default digunakan:', err.message);
       siteData.activities = getDefaultActivities();
+      firebaseStatus.dataSource.activities = 'default';
+      firebaseStatus.errors.push(`Activities: ${err.message}`);
     }
 
     // 8. Gallery
@@ -407,12 +452,23 @@ async function loadAllData() {
       siteData.gallery = [];
       galSnap.forEach((d) => siteData.gallery.push({ id: d.id, ...d.data() }));
       if (siteData.gallery.length === 0) siteData.gallery = getDefaultGallery();
+      firebaseStatus.dataSource.gallery = 'firestore';
     } catch (err) {
       console.warn('[Firestore] Gallery default digunakan:', err.message);
       siteData.gallery = getDefaultGallery();
+      firebaseStatus.dataSource.gallery = 'default';
+      firebaseStatus.errors.push(`Gallery: ${err.message}`);
     }
+    
+    // Jika ada error apa pun saat ambil data (fallback terjadi), berarti koneksi bermasalah
+    if (firebaseStatus.errors.length > 0) {
+      firebaseStatus.firestoreConnected = false;
+    }
+
   } catch (globalErr) {
     console.error('[Firestore Load All Error]:', globalErr);
+    firebaseStatus.firestoreConnected = false;
+    firebaseStatus.errors.push(`Global: ${globalErr.message}`);
     loadDefaultData();
   }
 }
@@ -426,6 +482,17 @@ function loadDefaultData() {
   siteData.facilities = getDefaultFacilities();
   siteData.activities = getDefaultActivities();
   siteData.gallery = getDefaultGallery();
+  
+  firebaseStatus.dataSource = {
+    provider: 'default',
+    hero: 'default',
+    info: 'default',
+    pricing: 'default',
+    hours: 'default',
+    facilities: 'default',
+    activities: 'default',
+    gallery: 'default'
+  };
 }
 
 // ===== DATA DEFAULT RESMI CITUMANG =====
@@ -645,10 +712,34 @@ function renderOverview() {
     </div>
 
     <div class="admin-card">
-      <h4><span class="material-symbols-outlined" style="font-size:20px;">cloud_done</span> Status Koneksi Firebase</h4>
-      <p style="font-size:0.875rem;color:var(--admin-text-secondary);margin-bottom:1rem;">
-        Database Firestore &amp; Storage terhubung. Setiap perubahan yang disimpan langsung tersinkronisasi ke website publik.
-      </p>
+      ${!firebaseStatus.envComplete ? `
+        <div style="background:var(--admin-danger);color:white;padding:1rem;border-radius:8px;margin-bottom:1rem;">
+          <h4 style="color:white;display:flex;align-items:center;gap:0.5rem;margin:0 0 0.5rem 0;">
+            <span class="material-symbols-outlined">error</span> Variabel Lingkungan Vercel Belum Lengkap
+          </h4>
+          <p style="margin:0;font-size:0.875rem;">Firebase tidak dapat berjalan. Mohon periksa <strong>VITE_FIREBASE_*</strong> di Vercel Environment Variables dan lakukan Redeploy.</p>
+        </div>
+      ` : !firebaseStatus.firestoreConnected ? `
+        <div style="background:#fff3cd;color:#856404;border:1px solid #ffeeba;padding:1rem;border-radius:8px;margin-bottom:1rem;">
+          <h4 style="color:#856404;display:flex;align-items:center;gap:0.5rem;margin:0 0 0.5rem 0;">
+            <span class="material-symbols-outlined">cloud_off</span> Mode Offline / Fallback Aktif
+          </h4>
+          <p style="margin:0;font-size:0.875rem;">
+            Gagal terhubung ke Firestore Database (Client is offline / Permission Denied).<br/>
+            <strong>Data yang Anda lihat saat ini adalah data DEFAULT statis.</strong><br/>
+            Pastikan Database Firestore sudah dibuat dan Security Rules mengizinkan <code>read, write</code> untuk user terautentikasi.
+          </p>
+        </div>
+      ` : `
+        <div style="background:#d4edda;color:#155724;border:1px solid #c3e6cb;padding:1rem;border-radius:8px;margin-bottom:1rem;">
+          <h4 style="color:#155724;display:flex;align-items:center;gap:0.5rem;margin:0 0 0.5rem 0;">
+            <span class="material-symbols-outlined">cloud_done</span> Database Online & Terhubung
+          </h4>
+          <p style="margin:0;font-size:0.875rem;">
+            Koneksi ke Firestore Database dan Storage berhasil. Semua perubahan akan langsung tersimpan permanen.
+          </p>
+        </div>
+      `}
       <div class="field-row">
         <button class="btn-primary" onclick="window._goToSection('provider')">
           <span class="material-symbols-outlined" style="font-size:18px;">badge</span> Kelola Provider
@@ -1574,6 +1665,12 @@ function openModal(title, bodyHtml, onSave) {
   $('#modal-cancel')?.addEventListener('click', closeModal);
   $('#modal-save')?.addEventListener('click', async () => {
     const saveBtn = $('#modal-save');
+
+    if (!firebaseStatus.firestoreConnected) {
+      alert('Gagal: Tidak ada koneksi aktif ke Firestore (Offline / Error Rules). Operasi dibatalkan.');
+      return;
+    }
+
     if (saveBtn) {
       saveBtn.disabled = true;
       saveBtn.innerHTML = '<span class="spinner"></span> Menyimpan...';
@@ -1601,12 +1698,13 @@ function closeModal() {
 async function saveDoc(collName, docId, data, statusId) {
   const statusEl = statusId ? $(`#${statusId}`) : null;
 
-  if (!db) {
+  if (!db || !firebaseStatus.firestoreConnected) {
     if (statusEl) {
       statusEl.className = 'status-msg error';
-      statusEl.textContent = '✗ Gagal: Koneksi Firebase belum terhubung.';
+      statusEl.textContent = '✗ Gagal: Tidak ada koneksi aktif ke Firestore (Offline / Error Rules).';
     }
-    return;
+    const err = new Error('Firestore is offline or permission denied');
+    throw err;
   }
 
   try {
