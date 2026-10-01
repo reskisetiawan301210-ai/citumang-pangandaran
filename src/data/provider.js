@@ -12,7 +12,7 @@ export const providerData = {
   experienceTag: "Pelayanan Wisata & Reservasi Resmi",
   
   // Deskripsi Faktual (tidak mengarang biodata pribadi)
-  description: "Koordinator layanan wisata dan pemesanan paket resmi Citumang Pangandaran. Siap melayani dan mendampingi kunjungan wisatawan untuk petualangan body rafting yang aman, nyaman, dan berkesan.",
+  description: "Koordinator layanan wisata dan pemesanan paket resmi Citumang Pangandaran. Siap melayani dan mendampingi kunjungan wisatawan untuk petualangan body rafting yang menyenangkan, aman, dan berkesan.",
   
   // Aset Foto Transparan (PNG & Modern WebP)
   image: "/images/provider/provider.png",
@@ -33,8 +33,8 @@ export const providerData = {
   highlights: [
     {
       icon: "verified_user",
-      title: "Pemandu Bersertifikat",
-      desc: "Instruktur river guide lokal berpengalaman dan berlisensi."
+      title: "Pemandu Profesional",
+      desc: "Instruktur lokal berpengalaman mendampingi setiap aktivitas body rafting."
     },
     {
       icon: "headset_mic",

@@ -1,10 +1,11 @@
 /**
  * Admin Panel — Citumang Pangandaran
- * Mengelola autentikasi admin dan CRUD data website via Firebase.
- * Dilengkapi proteksi sesi, timeout pencegah infinite loading, dan validasi hak akses admin.
+ * Mengelola autentikasi admin, upload gambar Firebase Storage, dan CRUD data website via Firebase Firestore.
+ * Dilengkapi proteksi sesi, timeout pencegah infinite loading, validasi hak akses admin,
+ * dan penyimpanan permanen ke server cloud.
  */
 
-import { auth, db, initError, checkFirebaseEnv } from '../config/firebase.js';
+import { auth, db, initError, checkFirebaseEnv, uploadImageToStorage } from '../config/firebase.js';
 import {
   signInWithEmailAndPassword,
   onAuthStateChanged,
@@ -26,6 +27,8 @@ import {
 let currentSection = 'overview';
 let authResolved = false;
 let siteData = {
+  provider: {},
+  hero: {},
   info: {},
   pricing: {},
   hours: {},
@@ -105,18 +108,26 @@ async function verifyAdminAccess(user) {
     }
   }
 
-  // 2. Verifikasi opsional ke koleksi 'admins' Firestore jika ada
+  // 2. Verifikasi ke koleksi 'admins' Firestore
   if (db) {
     try {
       const adminDoc = await getDoc(doc(db, 'admins', user.uid));
       if (adminDoc.exists()) {
         const data = adminDoc.data();
-        if (data.role && data.role !== 'admin') {
+        if (data.role && data.role !== 'admin' && data.isAdmin === false) {
           return { authorized: false, reason: 'Peran akun Anda bukan administrator.' };
         }
+      } else {
+        // Jika dokumen admin belum ada, daftarkan akun pemilik ini sebagai admin terverifikasi
+        await setDoc(doc(db, 'admins', user.uid), {
+          email: user.email,
+          role: 'admin',
+          isAdmin: true,
+          createdAt: serverTimestamp()
+        }, { merge: true }).catch(() => null);
       }
     } catch {
-      // Abaikan jika koleksi belum ada / rules belum diset
+      // Abaikan jika Firestore rules awal belum mengizinkan baca admins
     }
   }
 
@@ -142,101 +153,52 @@ function initAuth() {
     return;
   }
 
-  // Tombol alternatif jika verifikasi lambat
-  const fallbackTimer = setTimeout(() => {
+  // Timeout pengaman anti-infinite loading (maks 3.5 detik)
+  const authTimeout = setTimeout(() => {
     if (!authResolved) {
-      const btnFallback = $('#btn-force-show-login');
-      if (btnFallback) btnFallback.style.display = 'inline-block';
-    }
-  }, 2000);
-
-  // Safety timeout: jangan biarkan loading berputar lebih dari 3.5 detik
-  const safetyTimer = setTimeout(() => {
-    if (!authResolved) {
-      console.warn('[Admin Auth] Auth check timed out. Menampilkan form login.');
+      console.warn('[Auth Timeout] Sesi Firebase melampaui batas waktu, menampilkan login.');
       authResolved = true;
       hideLoading();
       showLogin();
+      showLoginError('Waktu tunggu koneksi Firebase habis. Silakan masukkan email dan password admin.');
     }
   }, 3500);
 
-  // Listener autentikasi Firebase
-  try {
-    onAuthStateChanged(
-      auth,
-      async (user) => {
-        authResolved = true;
-        clearTimeout(fallbackTimer);
-        clearTimeout(safetyTimer);
+  // Pantau status autentikasi Firebase
+  onAuthStateChanged(
+    auth,
+    async (user) => {
+      clearTimeout(authTimeout);
+      authResolved = true;
 
-        if (user) {
-          const authCheck = await verifyAdminAccess(user);
-          if (authCheck.authorized) {
-            await showDashboard(user);
-          } else {
-            console.warn('[Admin Auth] Akses ditolak untuk akun:', user.email);
-            try {
-              await signOut(auth);
-            } catch (e) {
-              console.error(e);
-            }
-            showLogin();
-            showLoginError(authCheck.reason);
-          }
+      if (user) {
+        showLoading('Memverifikasi hak akses admin...');
+        const authCheck = await verifyAdminAccess(user);
+
+        if (authCheck.authorized) {
+          await showDashboard(user);
         } else {
+          await signOut(auth);
           showLogin();
+          showLoginError(authCheck.reason);
         }
-      },
-      (error) => {
-        authResolved = true;
-        clearTimeout(fallbackTimer);
-        clearTimeout(safetyTimer);
-        console.error('[Admin Auth Error]:', error);
+      } else {
         showLogin();
-        showLoginError('Gagal memverifikasi status login: ' + (error.message || 'Koneksi terputus.'));
       }
-    );
-  } catch (err) {
-    authResolved = true;
-    clearTimeout(fallbackTimer);
-    clearTimeout(safetyTimer);
-    console.error('[Admin Auth Listener Error]:', err);
-    showLogin();
-    showLoginError('Terjadi kesalahan inisialisasi: ' + err.message);
-  }
-}
+    },
+    (error) => {
+      clearTimeout(authTimeout);
+      authResolved = true;
+      console.error('[Auth State Error]:', error);
+      showLogin();
+      showLoginError('Gagal memeriksa status login: ' + (error.message || 'Kesalahan jaringan.'));
+    }
+  );
 
-async function showDashboard(user) {
-  hideLoading();
-  const lp = $('#login-page');
-  const dp = $('#dashboard-page');
-  const emailEl = $('#admin-email');
-
-  if (lp) lp.style.display = 'none';
-  if (dp) dp.style.display = 'block';
-  if (emailEl) emailEl.textContent = user.email || 'Admin';
-
-  await loadAllData();
-  renderSection(currentSection);
-}
-
-// ===== REGISTER DOM EVENT LISTENERS =====
-function initDOMEvents() {
-  // Tombol buka form login darurat
-  $('#btn-force-show-login')?.addEventListener('click', () => {
-    authResolved = true;
-    showLogin();
-  });
-
-  // Form Login Submit
+  // Login Form Submit Handler
   $('#login-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     hideLoginError();
-
-    if (!auth) {
-      showLoginError('Firebase Auth belum siap. Periksa konfigurasi environment variables.');
-      return;
-    }
 
     const email = $('#login-email')?.value.trim();
     const password = $('#login-password')?.value;
@@ -299,33 +261,66 @@ function initDOMEvents() {
 
   // Logout Button
   $('#btn-logout')?.addEventListener('click', async () => {
-    showLoading('Sedang keluar...');
+    showLoading('Keluar dari sesi admin...');
     try {
-      if (auth) await signOut(auth);
+      await signOut(auth);
     } catch (err) {
       console.error('[Logout Error]:', err);
-    } finally {
-      showLogin();
     }
+    showLogin();
   });
 
-  // Sidebar Menu Items
-  $$('.sidebar-nav-item').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      $$('.sidebar-nav-item').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentSection = btn.dataset.section || 'overview';
-      renderSection(currentSection);
+  // Fallback Manual Button
+  $('#btn-force-login')?.addEventListener('click', () => {
+    hideLoading();
+    showLogin();
+  });
+}
+
+// ===== DASHBOARD INITIALIZATION =====
+async function showDashboard(user) {
+  const lp = $('#login-page');
+  const dp = $('#dashboard-page');
+  if (lp) lp.style.display = 'none';
+  if (dp) dp.style.display = 'block';
+
+  // Tampilkan email admin
+  const emailEl = $('#admin-user-email');
+  if (emailEl && user) emailEl.textContent = user.email || 'Admin';
+
+  // Setup sidebar navigasi
+  setupSidebarNavigation();
+
+  // Ambil seluruh data dari Firestore
+  showLoading('Memuat data website...');
+  await loadAllData();
+  hideLoading();
+
+  // Render halaman aktif
+  renderSection(currentSection);
+}
+
+function setupSidebarNavigation() {
+  $$('.sidebar-nav-item').forEach((item) => {
+    item.addEventListener('click', () => {
+      $$('.sidebar-nav-item').forEach((i) => i.classList.remove('active'));
+      item.classList.add('active');
+      const section = item.dataset.section;
+      if (section) {
+        currentSection = section;
+        renderSection(section);
+      }
+      // Tutup mobile sidebar setelah klik
       $('#admin-sidebar')?.classList.remove('open');
     });
   });
 
-  // Mobile Sidebar Toggle
-  $('#btn-sidebar-toggle')?.addEventListener('click', () => {
+  // Toggle mobile sidebar
+  $('#sidebar-toggle')?.addEventListener('click', () => {
     $('#admin-sidebar')?.classList.toggle('open');
   });
 
-  // Close modal on overlay click
+  // Close modal saat klik overlay luar
   $('#edit-modal')?.addEventListener('click', (e) => {
     if (e.target === $('#edit-modal')) closeModal();
   });
@@ -339,7 +334,25 @@ async function loadAllData() {
   }
 
   try {
-    // 1. Info
+    // 1. Provider
+    try {
+      const provDoc = await getDoc(doc(db, 'siteConfig', 'provider'));
+      siteData.provider = provDoc.exists() ? provDoc.data() : getDefaultProvider();
+    } catch (err) {
+      console.warn('[Firestore] Provider default digunakan:', err.message);
+      siteData.provider = getDefaultProvider();
+    }
+
+    // 2. Hero
+    try {
+      const heroDoc = await getDoc(doc(db, 'siteConfig', 'hero'));
+      siteData.hero = heroDoc.exists() ? heroDoc.data() : getDefaultHero();
+    } catch (err) {
+      console.warn('[Firestore] Hero default digunakan:', err.message);
+      siteData.hero = getDefaultHero();
+    }
+
+    // 3. Info
     try {
       const infoDoc = await getDoc(doc(db, 'siteConfig', 'info'));
       siteData.info = infoDoc.exists() ? infoDoc.data() : getDefaultInfo();
@@ -348,7 +361,7 @@ async function loadAllData() {
       siteData.info = getDefaultInfo();
     }
 
-    // 2. Pricing
+    // 4. Pricing
     try {
       const pricingDoc = await getDoc(doc(db, 'siteConfig', 'pricing'));
       siteData.pricing = pricingDoc.exists() ? pricingDoc.data() : getDefaultPricing();
@@ -357,7 +370,7 @@ async function loadAllData() {
       siteData.pricing = getDefaultPricing();
     }
 
-    // 3. Hours
+    // 5. Hours
     try {
       const hoursDoc = await getDoc(doc(db, 'siteConfig', 'hours'));
       siteData.hours = hoursDoc.exists() ? hoursDoc.data() : getDefaultHours();
@@ -366,7 +379,7 @@ async function loadAllData() {
       siteData.hours = getDefaultHours();
     }
 
-    // 4. Facilities
+    // 6. Facilities
     try {
       const facSnap = await getDocs(collection(db, 'facilities'));
       siteData.facilities = [];
@@ -377,7 +390,7 @@ async function loadAllData() {
       siteData.facilities = getDefaultFacilities();
     }
 
-    // 5. Activities
+    // 7. Activities
     try {
       const actSnap = await getDocs(collection(db, 'activities'));
       siteData.activities = [];
@@ -388,7 +401,7 @@ async function loadAllData() {
       siteData.activities = getDefaultActivities();
     }
 
-    // 6. Gallery
+    // 8. Gallery
     try {
       const galSnap = await getDocs(collection(db, 'gallery'));
       siteData.gallery = [];
@@ -405,6 +418,8 @@ async function loadAllData() {
 }
 
 function loadDefaultData() {
+  siteData.provider = getDefaultProvider();
+  siteData.hero = getDefaultHero();
   siteData.info = getDefaultInfo();
   siteData.pricing = getDefaultPricing();
   siteData.hours = getDefaultHours();
@@ -413,13 +428,34 @@ function loadDefaultData() {
   siteData.gallery = getDefaultGallery();
 }
 
-// ===== DATA DEFAULT CITUMANG PANGANDARAN =====
+// ===== DATA DEFAULT RESMI CITUMANG =====
+function getDefaultProvider() {
+  return {
+    name: 'Pengelola Resmi Citumang',
+    role: 'Official Provider & Tour Coordinator',
+    badge: 'Provider Resmi Terverifikasi',
+    description: 'Koordinator layanan wisata dan pemesanan paket resmi Citumang Pangandaran. Siap melayani dan mendampingi kunjungan wisatawan untuk petualangan body rafting yang menyenangkan, aman, dan berkesan.',
+    image: '/images/provider/provider.png',
+    imageWebp: '/images/provider/provider.webp',
+    whatsapp: '0812-2132-5957'
+  };
+}
+
+function getDefaultHero() {
+  return {
+    headline: 'Temukan Keindahan <span class="italic font-normal text-secondary-fixed">Citumang</span>',
+    subtitle: 'Rasakan kesegaran air jernih alami, keteduhan tebing karst, dan pengalaman petualangan body rafting rute ±1,5 KM bersama pemandu profesional di Citumang Pangandaran.',
+    desktopImage: '/images/citumang/hero.jpg',
+    mobileImage: '/images/citumang/hero-mobile.jpg'
+  };
+}
+
 function getDefaultInfo() {
   return {
     name: 'Citumang Pangandaran',
-    tagline: 'Wisata Alam & River Tubing',
-    description: 'Suaka ngarai sungai tropis legendaris di Pangandaran, Jawa Barat. Pengalaman body rafting eksklusif mengarungi kejernihan air alami dan gua karst purba.',
-    address: 'Bojong, Parigi, Pangandaran Regency, West Java 46393',
+    tagline: 'Body Rafting & Wisata Alam',
+    description: 'Wisata alam dan body rafting aliran sungai jernih di Citumang Pangandaran, Jawa Barat. Paket pengarungan rute ±1,5 KM lengkap dengan pemandu profesional, perlengkapan pelampung, asuransi, dan makan nasi liwet.',
+    address: 'Citumang, Desa Bojong, Kecamatan Parigi, Kabupaten Pangandaran, Jawa Barat 46393',
     whatsapp: '6281221325957',
     instagram: '@citumangpangandaran01',
     tiktok: '@citumangpangandaran01'
@@ -428,12 +464,12 @@ function getDefaultInfo() {
 
 function getDefaultPricing() {
   return {
-    startingPrice: 'Rp69.000',
+    startingPrice: 'Mulai dari Rp69.000',
     packages: [
       'Paket Body Rafting Lengkap (Mulai dari Rp69.000)',
       'River Body Rafting (Full Rute ±1,5 KM)',
-      'Eksplorasi Gua Karst & Stalaktit',
-      'Family Adventure (Ramah Anak & Lansia)',
+      'Berenang & Relaksasi Air Jernih',
+      'Family Adventure (Paket Keluarga)',
       'Paket Lengkap + Makan Nasi Liwet'
     ]
   };
@@ -450,43 +486,51 @@ function getDefaultHours() {
 
 function getDefaultFacilities() {
   return [
-    { title: 'Full body rafting ±1,5 KM', description: 'Pengarungan rute aliran sungai sepanjang ±1,5 KM.' },
-    { title: 'Perlengkapan body rafting', description: 'Rompi pelampung dan helm keselamatan standar resmi.' },
-    { title: 'Pemandu profesional', description: 'Instruktur lokal berlisensi dan berpengalaman.' },
-    { title: 'Jasa dokumentasi', description: 'Dokumentasi foto dan video selama petualangan berlangsung.' },
-    { title: 'Makan Nasi Liwet', description: 'Sajian hangat kuliner khas Sunda nasi liwet komplit.' },
-    { title: 'Asuransi', description: 'Perlindungan asuransi keselamatan bagi setiap wisatawan.' },
-    { title: 'Tempat penyimpanan barang', description: 'Loker penitipan barang yang aman dan terpantau.' },
-    { title: 'Dry bag', description: 'Tas tahan air untuk mengamankan barang elektronik berharga.' },
-    { title: 'Kolam terapi ikan', description: 'Kolam relaksasi terapi ikan alami di tepi sungai.' }
+    { title: 'Full Body Rafting ±1,5 KM', icon: 'kayaking', description: 'Pengarungan rute aliran sungai jernih sepanjang ±1,5 KM.' },
+    { title: 'Perlengkapan Body Rafting', icon: 'safety_check', description: 'Rompi pelampung (life jacket) standar keamanan resmi.' },
+    { title: 'Pemandu Profesional', icon: 'badge', description: 'Didampingi pemandu profesional dan berpengalaman.' },
+    { title: 'Jasa Dokumentasi', icon: 'photo_camera', description: 'Pengabadian foto & video petualangan Anda di spot terbaik.' },
+    { title: 'Makan Nasi Liwet', icon: 'restaurant', description: 'Sajian khas Sunda makan nasi liwet lezat yang disajikan hangat.' },
+    { title: 'Asuransi', icon: 'health_and_safety', description: 'Perlindungan asuransi keselamatan resmi bagi setiap pengunjung.' },
+    { title: 'Tempat Penyimpanan Barang', icon: 'inventory_2', description: 'Penyimpanan barang bawaan yang aman selama beraktivitas.' },
+    { title: 'Dry Bag', icon: 'backpack', description: 'Tas anti air untuk mengamankan gadget dan barang berharga.' },
+    { title: 'Kolam Terapi Ikan', icon: 'water_drop', description: 'Sensasi relaksasi alami di kolam terapi ikan untuk menyegarkan tubuh.' }
   ];
 }
 
 function getDefaultActivities() {
   return [
     {
+      id: 'local_1',
       title: 'Full Body Rafting ±1,5 KM',
-      description: 'Pengarungan rute aliran sungai dan tebing karst Citumang sepanjang ±1,5 KM mengenakan rompi pelampung standar keselamatan dipandu instruktur profesional.',
-      duration: 'Durasi ~2 - 3 Jam',
-      image: '/images/citumang/citumang-04.jpg'
+      tag: 'Mulai dari Rp69.000',
+      duration: 'Rute ±1,5 KM',
+      image: '/images/citumang/citumang-04.jpg',
+      description: 'Pengarungan rute aliran sungai dan tebing karst Citumang sepanjang ±1,5 KM mengenakan rompi pelampung standar keselamatan dipandu pemandu profesional.'
     },
     {
+      id: 'local_2',
       title: 'Berenang Santai di Air Jernih',
-      description: 'Berenang dan mengapung santai di aliran air sungai karst alami yang jernih dan segar di bawah naungan tebing batu kapur yang asri.',
-      duration: 'Bebas Waktu',
-      image: '/images/citumang/citumang-03.jpg'
+      tag: 'Fasilitas Resmi',
+      duration: 'Air Jernih',
+      image: '/images/citumang/citumang-03.jpg',
+      description: 'Berenang dan mengapung santai di aliran air sungai karst alami yang jernih dan segar di bawah naungan tebing batu kapur yang asri.'
     },
     {
+      id: 'local_3',
       title: 'Eksplorasi Gua Karst',
-      description: 'Mengeksplorasi lorong gua karst alami tempat hulu mata air sungai pegunungan mengalir tenang dengan formasi dinding batu kapur alami.',
+      tag: 'Eksotisme Karst',
       duration: 'Tersedia Pemandu',
-      image: '/images/citumang/citumang-06.jpg'
+      image: '/images/citumang/citumang-06.jpg',
+      description: 'Mengeksplorasi lorong gua karst alami tempat hulu mata air sungai pegunungan mengalir tenang dengan formasi dinding batu kapur alami.'
     },
     {
+      id: 'local_4',
       title: 'Aktivitas Ramah Keluarga',
-      description: 'Aktivitas berenang di sungai yang aman untuk keluarga dan anak-anak dengan rompi pelampung standar resmi serta pendampingan ranger.',
-      duration: 'Semua Usia',
-      image: '/images/citumang/citumang-05.jpg'
+      tag: 'Lengkap + Asuransi',
+      duration: 'Pendamping Pemandu',
+      image: '/images/citumang/citumang-05.jpg',
+      description: 'Aktivitas berenang di sungai yang aman untuk keluarga dan anak-anak dengan rompi pelampung standar resmi serta pendampingan pemandu profesional.'
     }
   ];
 }
@@ -494,9 +538,12 @@ function getDefaultActivities() {
 function getDefaultGallery() {
   const items = [];
   for (let i = 1; i <= 10; i++) {
-    const num = String(i).padStart(2, '0');
+    const num = i < 10 ? `0${i}` : `${i}`;
     items.push({
+      id: `local_gal_${i}`,
       image: `/images/citumang/citumang-${num}.jpg`,
+      title: `Dokumentasi Citumang ${i}`,
+      category: 'Wisata Alam',
       alt: `Foto Dokumentasi Citumang ${i}`,
       order: i
     });
@@ -512,6 +559,12 @@ function renderSection(section) {
   switch (section) {
     case 'overview':
       renderOverview();
+      break;
+    case 'provider':
+      renderProvider();
+      break;
+    case 'hero':
+      renderHero();
       break;
     case 'info':
       renderInfo();
@@ -536,17 +589,24 @@ function renderSection(section) {
   }
 }
 
-// ----- OVERVIEW -----
+// ----- 1. OVERVIEW -----
 function renderOverview() {
   const content = $('#admin-content');
   if (!content) return;
 
   content.innerHTML = `
     <div class="content-header">
-      <h3>Dashboard</h3>
-      <p>Ringkasan pengelolaan website Citumang Pangandaran.</p>
+      <h3>Dashboard Pengelolaan</h3>
+      <p>Ringkasan status pengelolaan konten resmi website Citumang Pangandaran.</p>
     </div>
     <div class="overview-grid">
+      <div class="overview-card">
+        <div class="ov-icon"><span class="material-symbols-outlined">badge</span></div>
+        <div>
+          <div class="ov-label">Provider</div>
+          <div class="ov-value" style="font-size:1.1rem;">${esc(siteData.provider.name || 'Terverifikasi')}</div>
+        </div>
+      </div>
       <div class="overview-card">
         <div class="ov-icon"><span class="material-symbols-outlined">kayaking</span></div>
         <div>
@@ -564,7 +624,7 @@ function renderOverview() {
       <div class="overview-card">
         <div class="ov-icon"><span class="material-symbols-outlined">photo_library</span></div>
         <div>
-          <div class="ov-label">Foto Gallery</div>
+          <div class="ov-label">Foto Galeri</div>
           <div class="ov-value">${siteData.gallery.length}</div>
         </div>
       </div>
@@ -572,90 +632,273 @@ function renderOverview() {
         <div class="ov-icon"><span class="material-symbols-outlined">payments</span></div>
         <div>
           <div class="ov-label">Harga Mulai</div>
-          <div class="ov-value">${esc(siteData.pricing.startingPrice || 'Rp69.000')}</div>
+          <div class="ov-value" style="font-size:1.1rem;">${esc(siteData.pricing.startingPrice || 'Rp69.000')}</div>
+        </div>
+      </div>
+      <div class="overview-card">
+        <div class="ov-icon"><span class="material-symbols-outlined">schedule</span></div>
+        <div>
+          <div class="ov-label">Jam Buka</div>
+          <div class="ov-value" style="font-size:1.1rem;">${esc(siteData.hours.open || '07:00')} - ${esc(siteData.hours.close || '16:30')}</div>
         </div>
       </div>
     </div>
 
     <div class="admin-card">
-      <h4><span class="material-symbols-outlined" style="font-size:20px;">info</span> Informasi Cepat</h4>
+      <h4><span class="material-symbols-outlined" style="font-size:20px;">cloud_done</span> Status Koneksi Firebase</h4>
+      <p style="font-size:0.875rem;color:var(--admin-text-secondary);margin-bottom:1rem;">
+        Database Firestore &amp; Storage terhubung. Setiap perubahan yang disimpan langsung tersinkronisasi ke website publik.
+      </p>
       <div class="field-row">
-        <div>
-          <div class="field-group">
-            <label>Nama Wisata</label>
-            <div style="font-size:0.875rem;font-weight:600;">${esc(siteData.info.name || '-')}</div>
-          </div>
-        </div>
-        <div>
-          <div class="field-group">
-            <label>Jam Operasional</label>
-            <div style="font-size:0.875rem;">${esc(siteData.hours.open || '07:00')} - ${esc(siteData.hours.close || '16:30')} ${esc(siteData.hours.timezone || 'WIB')}</div>
-          </div>
-        </div>
-      </div>
-      <div class="field-row">
-        <div>
-          <div class="field-group">
-            <label>WhatsApp</label>
-            <div style="font-size:0.875rem;">${esc(siteData.info.whatsapp || '-')}</div>
-          </div>
-        </div>
-        <div>
-          <div class="field-group">
-            <label>Alamat</label>
-            <div style="font-size:0.875rem;">${esc(siteData.info.address || '-')}</div>
-          </div>
-        </div>
+        <button class="btn-primary" onclick="window._goToSection('provider')">
+          <span class="material-symbols-outlined" style="font-size:18px;">badge</span> Kelola Provider
+        </button>
+        <button class="btn-primary" onclick="window._goToSection('hero')">
+          <span class="material-symbols-outlined" style="font-size:18px;">image</span> Kelola Hero Foto
+        </button>
+        <button class="btn-secondary" onclick="window._goToSection('gallery')">
+          <span class="material-symbols-outlined" style="font-size:18px;">photo_camera</span> Kelola Galeri
+        </button>
       </div>
     </div>
   `;
 }
 
-// ----- INFO -----
+// ----- 2. IDENTITAS PROVIDER (DENGAN UPLOAD FOTO) -----
+function renderProvider() {
+  const content = $('#admin-content');
+  if (!content) return;
+
+  const p = siteData.provider || getDefaultProvider();
+  content.innerHTML = `
+    <div class="content-header">
+      <h3>Identitas Provider Resmi</h3>
+      <p>Kelola nama pengelola, peranan, deskripsi, kontak, dan foto profil provider resmi yang tampil di website publik.</p>
+    </div>
+    <div class="admin-card">
+      <h4><span class="material-symbols-outlined" style="font-size:20px;">badge</span> Data Provider &amp; Foto Profil</h4>
+      <form id="form-provider">
+        <div class="field-row">
+          <div class="field-group">
+            <label for="prov-name">Nama Provider / Pengelola</label>
+            <input type="text" id="prov-name" value="${esc(p.name || '')}" placeholder="Contoh: Pengelola Resmi Citumang" required/>
+          </div>
+          <div class="field-group">
+            <label for="prov-role">Gelar / Peran Resmi</label>
+            <input type="text" id="prov-role" value="${esc(p.role || '')}" placeholder="Official Provider & Tour Coordinator"/>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="prov-desc">Deskripsi Pelayanan Provider</label>
+          <textarea id="prov-desc" rows="3" placeholder="Deskripsi pelayanan resmi...">${esc(p.description || '')}</textarea>
+        </div>
+
+        <div class="field-group">
+          <label>Foto Profil Provider (Format PNG Transparan / WebP direkomendasikan)</label>
+          <div class="upload-zone" id="prov-upload-zone">
+            <span class="material-symbols-outlined" style="font-size:36px;color:var(--admin-accent);">cloud_upload</span>
+            <p style="font-weight:600;margin:0.25rem 0;font-size:0.875rem;">Klik untuk pilih foto dari perangkat</p>
+            <p style="font-size:0.75rem;color:var(--admin-text-secondary);">Maksimal 10MB (PNG, JPG, WEBP). Foto akan otomatis diunggah ke Firebase Storage.</p>
+            <input type="file" id="prov-file-input" accept="image/*" style="display:none;"/>
+            <img src="${esc(p.image || '/images/provider/provider.png')}" id="prov-img-preview" class="upload-preview" alt="Preview Foto Provider"/>
+            <div id="prov-upload-status" class="upload-status"></div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="prov-img-url">URL / Path Foto Provider (Otomatis terisi setelah upload)</label>
+          <input type="text" id="prov-img-url" value="${esc(p.image || '')}" placeholder="https://... atau /images/provider/provider.png"/>
+        </div>
+
+        <div class="btn-group">
+          <button type="submit" class="btn-primary" id="btn-save-provider">
+            <span class="material-symbols-outlined" style="font-size:18px;">save</span>
+            Simpan Perubahan Provider
+          </button>
+        </div>
+        <div class="status-msg" id="provider-status"></div>
+      </form>
+    </div>
+  `;
+
+  // Attach Image Uploader
+  setupUploader({
+    zoneId: 'prov-upload-zone',
+    inputId: 'prov-file-input',
+    urlInputId: 'prov-img-url',
+    previewId: 'prov-img-preview',
+    statusId: 'prov-upload-status',
+    folder: 'provider'
+  });
+
+  // Submit Handler
+  $('#form-provider')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = $('#btn-save-provider');
+    if (btn) btn.disabled = true;
+
+    const updatedData = {
+      name: $('#prov-name')?.value.trim() || '',
+      role: $('#prov-role')?.value.trim() || '',
+      description: $('#prov-desc')?.value.trim() || '',
+      image: $('#prov-img-url')?.value.trim() || p.image || '/images/provider/provider.png',
+      imageWebp: $('#prov-img-url')?.value.trim() || p.image || '/images/provider/provider.png',
+      updatedAt: serverTimestamp()
+    };
+
+    await saveDoc('siteConfig', 'provider', updatedData, 'provider-status');
+    if (btn) btn.disabled = false;
+  });
+}
+
+// ----- 3. HERO & BERANDA (DENGAN UPLOAD FOTO DESKTOP & MOBILE) -----
+function renderHero() {
+  const content = $('#admin-content');
+  if (!content) return;
+
+  const h = siteData.hero || getDefaultHero();
+  content.innerHTML = `
+    <div class="content-header">
+      <h3>Hero &amp; Foto Beranda Utama</h3>
+      <p>Kelola judul, sub-judul, dan 2 foto responsive (Desktop Landscape &amp; Mobile Portrait) di bagian paling awal website.</p>
+    </div>
+    <div class="admin-card">
+      <h4><span class="material-symbols-outlined" style="font-size:20px;">image</span> Konfigurasi Hero Utama</h4>
+      <form id="form-hero">
+        <div class="field-group">
+          <label for="hero-title">Judul Utama Hero (Mendukung HTML &lt;span&gt;)</label>
+          <input type="text" id="hero-title" value="${esc(h.headline || '')}" placeholder="Temukan Keindahan &lt;span...&gt;Citumang&lt;/span&gt;" required/>
+        </div>
+
+        <div class="field-group">
+          <label for="hero-sub">Sub-judul Hero</label>
+          <textarea id="hero-sub" rows="3" placeholder="Rasakan kesegaran air jernih alami...">${esc(h.subtitle || '')}</textarea>
+        </div>
+
+        <div class="field-row">
+          <!-- Foto Desktop -->
+          <div class="field-group">
+            <label>1. Foto Hero Desktop (Landscape PC/Laptop)</label>
+            <div class="upload-zone" id="hero-desk-zone">
+              <span class="material-symbols-outlined" style="font-size:32px;color:var(--admin-accent);">desktop_windows</span>
+              <p style="font-weight:600;margin:0.25rem 0;font-size:0.8125rem;">Upload Foto Landscape PC</p>
+              <input type="file" id="hero-desk-file" accept="image/*" style="display:none;"/>
+              <img src="${esc(h.desktopImage || '/images/citumang/hero.jpg')}" id="hero-desk-preview" class="upload-preview" alt="Preview Foto Desktop"/>
+              <div id="hero-desk-status" class="upload-status"></div>
+            </div>
+            <input type="text" id="hero-desk-url" value="${esc(h.desktopImage || '')}" placeholder="/images/citumang/hero.jpg" style="margin-top:0.5rem;"/>
+          </div>
+
+          <!-- Foto Mobile -->
+          <div class="field-group">
+            <label>2. Foto Hero Mobile (Portrait HP)</label>
+            <div class="upload-zone" id="hero-mob-zone">
+              <span class="material-symbols-outlined" style="font-size:32px;color:var(--admin-accent);">smartphone</span>
+              <p style="font-weight:600;margin:0.25rem 0;font-size:0.8125rem;">Upload Foto Portrait HP</p>
+              <input type="file" id="hero-mob-file" accept="image/*" style="display:none;"/>
+              <img src="${esc(h.mobileImage || '/images/citumang/hero-mobile.jpg')}" id="hero-mob-preview" class="upload-preview" alt="Preview Foto Mobile"/>
+              <div id="hero-mob-status" class="upload-status"></div>
+            </div>
+            <input type="text" id="hero-mob-url" value="${esc(h.mobileImage || '')}" placeholder="/images/citumang/hero-mobile.jpg" style="margin-top:0.5rem;"/>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button type="submit" class="btn-primary" id="btn-save-hero">
+            <span class="material-symbols-outlined" style="font-size:18px;">save</span>
+            Simpan Perubahan Hero
+          </button>
+        </div>
+        <div class="status-msg" id="hero-status"></div>
+      </form>
+    </div>
+  `;
+
+  // Attach Desktop Uploader
+  setupUploader({
+    zoneId: 'hero-desk-zone',
+    inputId: 'hero-desk-file',
+    urlInputId: 'hero-desk-url',
+    previewId: 'hero-desk-preview',
+    statusId: 'hero-desk-status',
+    folder: 'hero'
+  });
+
+  // Attach Mobile Uploader
+  setupUploader({
+    zoneId: 'hero-mob-zone',
+    inputId: 'hero-mob-file',
+    urlInputId: 'hero-mob-url',
+    previewId: 'hero-mob-preview',
+    statusId: 'hero-mob-status',
+    folder: 'hero'
+  });
+
+  // Submit Handler
+  $('#form-hero')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = $('#btn-save-hero');
+    if (btn) btn.disabled = true;
+
+    const updatedData = {
+      headline: $('#hero-title')?.value.trim() || '',
+      subtitle: $('#hero-sub')?.value.trim() || '',
+      desktopImage: $('#hero-desk-url')?.value.trim() || h.desktopImage || '/images/citumang/hero.jpg',
+      mobileImage: $('#hero-mob-url')?.value.trim() || h.mobileImage || '/images/citumang/hero-mobile.jpg',
+      updatedAt: serverTimestamp()
+    };
+
+    await saveDoc('siteConfig', 'hero', updatedData, 'hero-status');
+    if (btn) btn.disabled = false;
+  });
+}
+
+// ----- 4. INFORMASI WEBSITE -----
 function renderInfo() {
   const content = $('#admin-content');
   if (!content) return;
 
-  const d = siteData.info || {};
+  const d = siteData.info || getDefaultInfo();
   content.innerHTML = `
     <div class="content-header">
-      <h3>Informasi Website</h3>
-      <p>Kelola informasi umum yang ditampilkan di website.</p>
+      <h3>Informasi Umum Website</h3>
+      <p>Kelola nama, kontak resmi, alamat, dan media sosial website Citumang.</p>
     </div>
     <div class="admin-card">
-      <h4><span class="material-symbols-outlined" style="font-size:20px;">edit</span> Data Informasi</h4>
+      <h4><span class="material-symbols-outlined" style="font-size:20px;">info</span> Data Informasi</h4>
       <form id="form-info">
         <div class="field-row">
           <div class="field-group">
             <label for="info-name">Nama Wisata</label>
-            <input type="text" id="info-name" value="${esc(d.name || '')}" placeholder="Citumang Pangandaran"/>
+            <input type="text" id="info-name" value="${esc(d.name || '')}" placeholder="Citumang Pangandaran" required/>
           </div>
           <div class="field-group">
             <label for="info-tagline">Tagline</label>
-            <input type="text" id="info-tagline" value="${esc(d.tagline || '')}" placeholder="Wisata Alam & River Tubing"/>
+            <input type="text" id="info-tagline" value="${esc(d.tagline || '')}" placeholder="Body Rafting & Wisata Alam"/>
           </div>
         </div>
         <div class="field-group">
-          <label for="info-desc">Deskripsi</label>
-          <textarea id="info-desc" rows="3" placeholder="Deskripsi singkat wisata...">${esc(d.description || '')}</textarea>
+          <label for="info-desc">Deskripsi Resmi</label>
+          <textarea id="info-desc" rows="3" placeholder="Deskripsi resmi wisata...">${esc(d.description || '')}</textarea>
         </div>
         <div class="field-group">
-          <label for="info-address">Alamat Lengkap</label>
-          <input type="text" id="info-address" value="${esc(d.address || '')}" placeholder="Alamat lengkap"/>
+          <label for="info-address">Alamat Lengkap (Acuan Resmi)</label>
+          <input type="text" id="info-address" value="${esc(d.address || '')}" placeholder="Citumang, Desa Bojong, Kecamatan Parigi, Kabupaten Pangandaran, Jawa Barat"/>
         </div>
         <div class="field-row">
           <div class="field-group">
-            <label for="info-wa">WhatsApp (format: 628xxx)</label>
+            <label for="info-wa">Nomor WhatsApp Resmi (Contoh: 6281221325957)</label>
             <input type="text" id="info-wa" value="${esc(d.whatsapp || '')}" placeholder="6281221325957"/>
           </div>
           <div class="field-group">
-            <label for="info-ig">Instagram</label>
-            <input type="text" id="info-ig" value="${esc(d.instagram || '')}" placeholder="@username"/>
+            <label for="info-ig">Instagram Resmi</label>
+            <input type="text" id="info-ig" value="${esc(d.instagram || '')}" placeholder="@citumangpangandaran01"/>
           </div>
         </div>
         <div class="field-group">
-          <label for="info-tiktok">TikTok</label>
-          <input type="text" id="info-tiktok" value="${esc(d.tiktok || '')}" placeholder="@username"/>
+          <label for="info-tiktok">TikTok Resmi</label>
+          <input type="text" id="info-tiktok" value="${esc(d.tiktok || '')}" placeholder="@citumangpangandaran01"/>
         </div>
         <div class="btn-group">
           <button type="submit" class="btn-primary" id="btn-save-info">
@@ -688,157 +931,157 @@ function renderInfo() {
       },
       'info-status'
     );
-
     if (btn) btn.disabled = false;
   });
 }
 
-// ----- PRICING -----
+// ----- 5. HARGA & PAKET -----
 function renderPricing() {
   const content = $('#admin-content');
   if (!content) return;
 
-  const d = siteData.pricing || {};
-  const pkgs = (d.packages || [])
-    .map(
-      (p, i) => `
-    <div class="item-entry">
-      <div><div class="item-title">${esc(p)}</div></div>
-      <div class="item-actions">
-        <button class="btn-icon" onclick="window._editPackage(${i})" title="Edit"><span class="material-symbols-outlined" style="font-size:18px;">edit</span></button>
-        <button class="btn-icon danger" onclick="window._deletePackage(${i})" title="Hapus"><span class="material-symbols-outlined" style="font-size:18px;">delete</span></button>
-      </div>
-    </div>
-  `
-    )
-    .join('');
+  const d = siteData.pricing || getDefaultPricing();
+  const pkgs = d.packages || [];
 
   content.innerHTML = `
     <div class="content-header">
-      <h3>Harga & Paket</h3>
-      <p>Kelola harga dasar dan daftar paket wisata.</p>
+      <h3>Harga &amp; Paket Wisata</h3>
+      <p>Kelola harga mulai dan daftar paket resmi body rafting Citumang.</p>
     </div>
     <div class="admin-card">
-      <h4><span class="material-symbols-outlined" style="font-size:20px;">sell</span> Harga Dasar</h4>
-      <form id="form-price">
+      <h4><span class="material-symbols-outlined" style="font-size:20px;">payments</span> Harga Mulai</h4>
+      <form id="form-pricing">
         <div class="field-group">
-          <label for="price-start">Harga Mulai Dari</label>
-          <input type="text" id="price-start" value="${esc(d.startingPrice || '')}" placeholder="Rp69.000"/>
+          <label for="pricing-start">Teks Harga Mulai</label>
+          <input type="text" id="pricing-start" value="${esc(d.startingPrice || 'Mulai dari Rp69.000')}" placeholder="Mulai dari Rp69.000" required/>
         </div>
         <div class="btn-group">
-          <button type="submit" class="btn-primary" id="btn-save-price">
+          <button type="submit" class="btn-primary" id="btn-save-pricing">
             <span class="material-symbols-outlined" style="font-size:18px;">save</span>
-            Simpan Harga
+            Simpan Harga Mulai
           </button>
         </div>
-        <div class="status-msg" id="price-status"></div>
+        <div class="status-msg" id="pricing-status"></div>
       </form>
     </div>
 
     <div class="admin-card">
-      <h4><span class="material-symbols-outlined" style="font-size:20px;">inventory_2</span> Daftar Paket</h4>
-      <div id="package-list">${pkgs || '<p style="color:var(--admin-text-secondary);font-size:0.875rem;">Belum ada paket.</p>'}</div>
-      <div class="btn-group">
-        <button class="btn-secondary" id="btn-add-package" type="button">
-          <span class="material-symbols-outlined" style="font-size:18px;">add</span>
-          Tambah Paket
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h4><span class="material-symbols-outlined" style="font-size:20px;">inventory</span> Daftar Paket Reservasi</h4>
+        <button class="btn-primary" id="btn-add-pkg">
+          <span class="material-symbols-outlined" style="font-size:18px;">add</span> Tambah Paket
         </button>
+      </div>
+      <div class="item-list" id="package-list">
+        ${pkgs.map((pkg, i) => `
+          <div class="list-item">
+            <span style="font-size:0.9375rem;font-weight:500;">${esc(pkg)}</span>
+            <div class="item-actions">
+              <button class="btn-icon" onclick="window._editPackage(${i})" title="Edit">
+                <span class="material-symbols-outlined" style="font-size:18px;">edit</span>
+              </button>
+              <button class="btn-icon" style="color:var(--admin-danger);" onclick="window._deletePackage(${i})" title="Hapus">
+                <span class="material-symbols-outlined" style="font-size:18px;">delete</span>
+              </button>
+            </div>
+          </div>
+        `).join('')}
       </div>
     </div>
   `;
 
-  $('#form-price')?.addEventListener('submit', async (e) => {
+  $('#form-pricing')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const btn = $('#btn-save-price');
+    const btn = $('#btn-save-pricing');
     if (btn) btn.disabled = true;
 
-    siteData.pricing.startingPrice = $('#price-start')?.value.trim() || 'Rp69.000';
-    await saveDoc('siteConfig', 'pricing', siteData.pricing, 'price-status');
-
+    await saveDoc(
+      'siteConfig',
+      'pricing',
+      {
+        startingPrice: $('#pricing-start')?.value.trim() || 'Mulai dari Rp69.000',
+        packages: siteData.pricing.packages || [],
+        updatedAt: serverTimestamp()
+      },
+      'pricing-status'
+    );
     if (btn) btn.disabled = false;
   });
 
-  $('#btn-add-package')?.addEventListener('click', () => {
-    openModal(
-      'Tambah Paket Wisata',
-      `
+  $('#btn-add-pkg')?.addEventListener('click', () => {
+    openModal('Tambah Paket Wisata', `
       <div class="field-group">
         <label for="modal-pkg-name">Nama Paket</label>
-        <input type="text" id="modal-pkg-name" placeholder="Contoh: Paket Family Rafting (Rp85.000)"/>
+        <input type="text" id="modal-pkg-name" placeholder="Contoh: Paket Body Rafting Lengkap (Mulai dari Rp69.000)"/>
       </div>
-    `,
-      async () => {
-        const name = $('#modal-pkg-name')?.value.trim();
-        if (!name) return;
-        siteData.pricing.packages = siteData.pricing.packages || [];
-        siteData.pricing.packages.push(name);
-        await saveDoc('siteConfig', 'pricing', siteData.pricing, null);
-        closeModal();
-        renderPricing();
-      }
-    );
+    `, async () => {
+      const val = $('#modal-pkg-name')?.value.trim();
+      if (!val) return;
+      if (!siteData.pricing.packages) siteData.pricing.packages = [];
+      siteData.pricing.packages.push(val);
+      await saveDoc('siteConfig', 'pricing', { packages: siteData.pricing.packages });
+      closeModal();
+      renderPricing();
+    });
   });
-
-  window._editPackage = (i) => {
-    const pkg = siteData.pricing.packages[i];
-    openModal(
-      'Edit Paket Wisata',
-      `
-      <div class="field-group">
-        <label for="modal-pkg-name">Nama Paket</label>
-        <input type="text" id="modal-pkg-name" value="${esc(pkg)}"/>
-      </div>
-    `,
-      async () => {
-        const val = $('#modal-pkg-name')?.value.trim();
-        if (!val) return;
-        siteData.pricing.packages[i] = val;
-        await saveDoc('siteConfig', 'pricing', siteData.pricing, null);
-        closeModal();
-        renderPricing();
-      }
-    );
-  };
-
-  window._deletePackage = async (i) => {
-    if (!confirm('Hapus paket ini?')) return;
-    siteData.pricing.packages.splice(i, 1);
-    await saveDoc('siteConfig', 'pricing', siteData.pricing, null);
-    renderPricing();
-  };
 }
 
-// ----- HOURS -----
+// Window helpers for inline onclick
+window._editPackage = (index) => {
+  const current = siteData.pricing.packages[index] || '';
+  openModal('Edit Paket Wisata', `
+    <div class="field-group">
+      <label for="modal-pkg-name">Nama Paket</label>
+      <input type="text" id="modal-pkg-name" value="${esc(current)}"/>
+    </div>
+  `, async () => {
+    const val = $('#modal-pkg-name')?.value.trim();
+    if (!val) return;
+    siteData.pricing.packages[index] = val;
+    await saveDoc('siteConfig', 'pricing', { packages: siteData.pricing.packages });
+    closeModal();
+    renderPricing();
+  });
+};
+
+window._deletePackage = async (index) => {
+  if (!confirm('Hapus paket ini dari daftar reservasi?')) return;
+  siteData.pricing.packages.splice(index, 1);
+  await saveDoc('siteConfig', 'pricing', { packages: siteData.pricing.packages });
+  renderPricing();
+};
+
+// ----- 6. JAM OPERASIONAL -----
 function renderHours() {
   const content = $('#admin-content');
   if (!content) return;
 
-  const d = siteData.hours || {};
+  const d = siteData.hours || getDefaultHours();
   content.innerHTML = `
     <div class="content-header">
       <h3>Jam Operasional</h3>
-      <p>Atur jadwal buka dan tutup wisata Citumang.</p>
+      <p>Kelola jadwal buka dan tutup resmi Citumang Pangandaran.</p>
     </div>
     <div class="admin-card">
-      <h4><span class="material-symbols-outlined" style="font-size:20px;">schedule</span> Jadwal Kunjungan</h4>
+      <h4><span class="material-symbols-outlined" style="font-size:20px;">schedule</span> Jam Operasional Resmi</h4>
       <form id="form-hours">
         <div class="field-group">
-          <label for="hours-days">Hari Operasional</label>
-          <input type="text" id="hours-days" value="${esc(d.days || '')}" placeholder="Senin - Minggu"/>
+          <label for="hours-days">Hari Buka</label>
+          <input type="text" id="hours-days" value="${esc(d.days || 'Senin - Minggu')}" placeholder="Senin - Minggu" required/>
         </div>
         <div class="field-row">
           <div class="field-group">
             <label for="hours-open">Jam Buka</label>
-            <input type="time" id="hours-open" value="${esc(d.open || '07:00')}"/>
+            <input type="text" id="hours-open" value="${esc(d.open || '07:00')}" placeholder="07:00" required/>
           </div>
           <div class="field-group">
             <label for="hours-close">Jam Tutup</label>
-            <input type="time" id="hours-close" value="${esc(d.close || '16:30')}"/>
+            <input type="text" id="hours-close" value="${esc(d.close || '16:30')}" placeholder="16:30" required/>
           </div>
-        </div>
-        <div class="field-group">
-          <label for="hours-tz">Zona Waktu</label>
-          <input type="text" id="hours-tz" value="${esc(d.timezone || 'WIB')}" placeholder="WIB"/>
+          <div class="field-group">
+            <label for="hours-tz">Zona Waktu</label>
+            <input type="text" id="hours-tz" value="${esc(d.timezone || 'WIB')}" placeholder="WIB" required/>
+          </div>
         </div>
         <div class="btn-group">
           <button type="submit" class="btn-primary" id="btn-save-hours">
@@ -861,267 +1104,244 @@ function renderHours() {
       'hours',
       {
         days: $('#hours-days')?.value.trim() || 'Senin - Minggu',
-        open: $('#hours-open')?.value || '07:00',
-        close: $('#hours-close')?.value || '16:30',
+        open: $('#hours-open')?.value.trim() || '07:00',
+        close: $('#hours-close')?.value.trim() || '16:30',
         timezone: $('#hours-tz')?.value.trim() || 'WIB',
         updatedAt: serverTimestamp()
       },
       'hours-status'
     );
-
     if (btn) btn.disabled = false;
   });
 }
 
-// ----- FACILITIES -----
+// ----- 7. FASILITAS -----
 function renderFacilities() {
   const content = $('#admin-content');
   if (!content) return;
 
-  const items = siteData.facilities
-    .map(
-      (f, i) => `
-    <div class="item-entry">
-      <div>
-        <div class="item-title">${esc(f.title)}</div>
-        <div class="item-sub">${esc(f.description || '')}</div>
-      </div>
-      <div class="item-actions">
-        <button class="btn-icon" onclick="window._editFacility(${i})" title="Edit"><span class="material-symbols-outlined" style="font-size:18px;">edit</span></button>
-        <button class="btn-icon danger" onclick="window._deleteFacility(${i})" title="Hapus"><span class="material-symbols-outlined" style="font-size:18px;">delete</span></button>
-      </div>
-    </div>
-  `
-    )
-    .join('');
-
+  const facs = siteData.facilities || [];
   content.innerHTML = `
     <div class="content-header">
-      <h3>Fasilitas</h3>
-      <p>Kelola daftar fasilitas resmi yang didapatkan pengunjung.</p>
+      <h3>Daftar Fasilitas Resmi</h3>
+      <p>Kelola 9 fasilitas resmi yang didapatkan wisatawan di Citumang.</p>
     </div>
     <div class="admin-card">
-      <h4><span class="material-symbols-outlined" style="font-size:20px;">list</span> Daftar Fasilitas (${siteData.facilities.length})</h4>
-      <div id="facility-list">${items || '<p style="color:var(--admin-text-secondary);font-size:0.875rem;">Belum ada fasilitas.</p>'}</div>
-      <div class="btn-group">
-        <button class="btn-secondary" id="btn-add-facility" type="button">
-          <span class="material-symbols-outlined" style="font-size:18px;">add</span>
-          Tambah Fasilitas
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h4><span class="material-symbols-outlined" style="font-size:20px;">spa</span> Fasilitas (${facs.length})</h4>
+        <button class="btn-primary" id="btn-add-fac">
+          <span class="material-symbols-outlined" style="font-size:18px;">add</span> Tambah Fasilitas
         </button>
+      </div>
+      <div class="item-list">
+        ${facs.map((f, i) => `
+          <div class="list-item">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+              <span class="material-symbols-outlined" style="font-size:24px;color:var(--admin-accent);">${esc(f.icon || 'check_circle')}</span>
+              <div>
+                <div style="font-weight:600;font-size:0.9375rem;">${esc(f.title)}</div>
+                <div style="font-size:0.8125rem;color:var(--admin-text-secondary);">${esc(f.description || '')}</div>
+              </div>
+            </div>
+            <div class="item-actions">
+              <button class="btn-icon" onclick="window._editFacility(${i})" title="Edit">
+                <span class="material-symbols-outlined" style="font-size:18px;">edit</span>
+              </button>
+              <button class="btn-icon" style="color:var(--admin-danger);" onclick="window._deleteFacility(${i})" title="Hapus">
+                <span class="material-symbols-outlined" style="font-size:18px;">delete</span>
+              </button>
+            </div>
+          </div>
+        `).join('')}
       </div>
     </div>
   `;
 
-  $('#btn-add-facility')?.addEventListener('click', () => {
-    openModal(
-      'Tambah Fasilitas',
-      `
+  $('#btn-add-fac')?.addEventListener('click', () => {
+    openModal('Tambah Fasilitas', `
       <div class="field-group">
         <label for="modal-fac-title">Nama Fasilitas</label>
-        <input type="text" id="modal-fac-title" placeholder="Nama fasilitas"/>
+        <input type="text" id="modal-fac-title" placeholder="Contoh: Kolam Terapi Ikan"/>
       </div>
       <div class="field-group">
-        <label for="modal-fac-desc">Deskripsi</label>
-        <textarea id="modal-fac-desc" rows="2" placeholder="Deskripsi singkat"></textarea>
+        <label for="modal-fac-icon">Nama Ikon Material Symbol</label>
+        <input type="text" id="modal-fac-icon" placeholder="water_drop, kayaking, restaurant, badge..."/>
       </div>
-    `,
-      async () => {
-        const title = $('#modal-fac-title')?.value.trim();
-        if (!title) return;
-        const newFac = {
-          title,
-          description: $('#modal-fac-desc')?.value.trim() || ''
-        };
-        if (db) {
-          try {
-            const docRef = await addDoc(collection(db, 'facilities'), {
-              ...newFac,
-              createdAt: serverTimestamp()
-            });
-            siteData.facilities.push({ id: docRef.id, ...newFac });
-          } catch (err) {
-            console.warn('[Firestore] Gagal menyimpan ke server, menyimpan secara lokal:', err);
-            siteData.facilities.push({ id: 'local_' + Date.now(), ...newFac });
-          }
-        } else {
-          siteData.facilities.push({ id: 'local_' + Date.now(), ...newFac });
-        }
-        closeModal();
-        renderFacilities();
+      <div class="field-group">
+        <label for="modal-fac-desc">Deskripsi Singkat</label>
+        <textarea id="modal-fac-desc" rows="2" placeholder="Deskripsi fasilitas..."></textarea>
+      </div>
+    `, async () => {
+      const data = {
+        title: $('#modal-fac-title')?.value.trim() || '',
+        icon: $('#modal-fac-icon')?.value.trim() || 'check_circle',
+        description: $('#modal-fac-desc')?.value.trim() || ''
+      };
+      if (!data.title) return;
+
+      if (db) {
+        const docRef = await addDoc(collection(db, 'facilities'), {
+          ...data,
+          createdAt: serverTimestamp()
+        });
+        siteData.facilities.push({ id: docRef.id, ...data });
+      } else {
+        siteData.facilities.push({ id: 'local_' + Date.now(), ...data });
       }
-    );
+      closeModal();
+      renderFacilities();
+    });
   });
-
-  window._editFacility = (i) => {
-    const f = siteData.facilities[i];
-    openModal(
-      'Edit Fasilitas',
-      `
-      <div class="field-group">
-        <label for="modal-fac-title">Nama Fasilitas</label>
-        <input type="text" id="modal-fac-title" value="${esc(f.title)}"/>
-      </div>
-      <div class="field-group">
-        <label for="modal-fac-desc">Deskripsi</label>
-        <textarea id="modal-fac-desc" rows="2">${esc(f.description || '')}</textarea>
-      </div>
-    `,
-      async () => {
-        const updated = {
-          title: $('#modal-fac-title')?.value.trim() || f.title,
-          description: $('#modal-fac-desc')?.value.trim() || ''
-        };
-        if (db && f.id && !f.id.startsWith('local_')) {
-          try {
-            await updateDoc(doc(db, 'facilities', f.id), {
-              ...updated,
-              updatedAt: serverTimestamp()
-            });
-          } catch (err) {
-            console.warn('[Firestore] Gagal update fasilitas:', err);
-          }
-        }
-        siteData.facilities[i] = { ...f, ...updated };
-        closeModal();
-        renderFacilities();
-      }
-    );
-  };
-
-  window._deleteFacility = async (i) => {
-    if (!confirm('Hapus fasilitas ini?')) return;
-    const f = siteData.facilities[i];
-    if (db && f.id && !f.id.startsWith('local_')) {
-      try {
-        await deleteDoc(doc(db, 'facilities', f.id));
-      } catch (err) {
-        console.warn('[Firestore] Gagal delete fasilitas:', err);
-      }
-    }
-    siteData.facilities.splice(i, 1);
-    renderFacilities();
-  };
 }
 
-// ----- ACTIVITIES -----
+window._editFacility = (index) => {
+  const f = siteData.facilities[index];
+  if (!f) return;
+  openModal('Edit Fasilitas', `
+    <div class="field-group">
+      <label for="modal-fac-title">Nama Fasilitas</label>
+      <input type="text" id="modal-fac-title" value="${esc(f.title)}"/>
+    </div>
+    <div class="field-group">
+      <label for="modal-fac-icon">Nama Ikon Material Symbol</label>
+      <input type="text" id="modal-fac-icon" value="${esc(f.icon || 'check_circle')}"/>
+    </div>
+    <div class="field-group">
+      <label for="modal-fac-desc">Deskripsi Singkat</label>
+      <textarea id="modal-fac-desc" rows="2">${esc(f.description || '')}</textarea>
+    </div>
+  `, async () => {
+    const data = {
+      title: $('#modal-fac-title')?.value.trim() || '',
+      icon: $('#modal-fac-icon')?.value.trim() || 'check_circle',
+      description: $('#modal-fac-desc')?.value.trim() || ''
+    };
+    if (!data.title) return;
+
+    if (f.id && !f.id.startsWith('local_') && db) {
+      await updateDoc(doc(db, 'facilities', f.id), { ...data, updatedAt: serverTimestamp() });
+      siteData.facilities[index] = { ...f, ...data };
+    } else {
+      siteData.facilities[index] = { ...f, ...data };
+    }
+    closeModal();
+    renderFacilities();
+  });
+};
+
+window._deleteFacility = async (index) => {
+  const f = siteData.facilities[index];
+  if (!confirm(`Hapus fasilitas "${f.title}"?`)) return;
+  if (f.id && !f.id.startsWith('local_') && db) {
+    await deleteDoc(doc(db, 'facilities', f.id)).catch(() => null);
+  }
+  siteData.facilities.splice(index, 1);
+  renderFacilities();
+};
+
+// ----- 8. AKTIVITAS (DENGAN UPLOAD FOTO) -----
 function renderActivities() {
   const content = $('#admin-content');
   if (!content) return;
 
-  const items = siteData.activities
-    .map(
-      (a, i) => `
-    <div class="item-entry">
-      <div style="display:flex;align-items:center;gap:0.75rem;">
-        ${a.image ? `<img src="${esc(a.image)}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;" alt="" loading="lazy"/>` : ''}
-        <div>
-          <div class="item-title">${esc(a.title)}</div>
-          <div class="item-sub">${esc(a.duration || '')}</div>
-        </div>
-      </div>
-      <div class="item-actions">
-        <button class="btn-icon" onclick="window._editActivity(${i})" title="Edit"><span class="material-symbols-outlined" style="font-size:18px;">edit</span></button>
-        <button class="btn-icon danger" onclick="window._deleteActivity(${i})" title="Hapus"><span class="material-symbols-outlined" style="font-size:18px;">delete</span></button>
-      </div>
-    </div>
-  `
-    )
-    .join('');
-
+  const acts = siteData.activities || [];
   content.innerHTML = `
     <div class="content-header">
-      <h3>Aktivitas</h3>
-      <p>Kelola aktivitas wisata yang ditampilkan di website Citumang.</p>
+      <h3>Aktivitas Unggulan</h3>
+      <p>Kelola kartu aktivitas wisata body rafting, gua karst, dan renang sungai.</p>
     </div>
     <div class="admin-card">
-      <h4><span class="material-symbols-outlined" style="font-size:20px;">list</span> Daftar Aktivitas (${siteData.activities.length})</h4>
-      <div id="activity-list">${items || '<p style="color:var(--admin-text-secondary);font-size:0.875rem;">Belum ada aktivitas.</p>'}</div>
-      <div class="btn-group">
-        <button class="btn-secondary" id="btn-add-activity" type="button">
-          <span class="material-symbols-outlined" style="font-size:18px;">add</span>
-          Tambah Aktivitas
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h4><span class="material-symbols-outlined" style="font-size:20px;">kayaking</span> Daftar Aktivitas (${acts.length})</h4>
+        <button class="btn-primary" id="btn-add-act">
+          <span class="material-symbols-outlined" style="font-size:18px;">add</span> Tambah Aktivitas
         </button>
+      </div>
+      <div class="item-list">
+        ${acts.map((a, i) => `
+          <div class="list-item">
+            <div style="display:flex;align-items:center;gap:1rem;">
+              <img src="${esc(a.image)}" alt="${esc(a.title)}" style="width:64px;height:48px;border-radius:6px;object-fit:cover;flex-shrink:0;border:1px solid var(--admin-border);" onerror="this.src='/images/citumang/hero.jpg';"/>
+              <div>
+                <div style="font-weight:600;font-size:0.9375rem;">${esc(a.title)} <span style="font-size:0.75rem;padding:2px 8px;border-radius:999px;background:var(--admin-surface);color:var(--admin-accent);font-weight:600;margin-left:0.5rem;">${esc(a.tag || '')}</span></div>
+                <div style="font-size:0.8125rem;color:var(--admin-text-secondary);">${esc(a.description || '')}</div>
+                <div style="font-size:0.75rem;color:var(--admin-text-secondary);margin-top:2px;">Rute / Keterangan: <strong>${esc(a.duration || '-')}</strong></div>
+              </div>
+            </div>
+            <div class="item-actions">
+              <button class="btn-icon" onclick="window._editActivity(${i})" title="Edit">
+                <span class="material-symbols-outlined" style="font-size:18px;">edit</span>
+              </button>
+              <button class="btn-icon" style="color:var(--admin-danger);" onclick="window._deleteActivity(${i})" title="Hapus">
+                <span class="material-symbols-outlined" style="font-size:18px;">delete</span>
+              </button>
+            </div>
+          </div>
+        `).join('')}
       </div>
     </div>
   `;
 
-  $('#btn-add-activity')?.addEventListener('click', () => {
-    showActivityModal(-1);
-  });
-
-  window._editActivity = (i) => showActivityModal(i);
-
-  window._deleteActivity = async (i) => {
-    if (!confirm('Hapus aktivitas ini?')) return;
-    const a = siteData.activities[i];
-    if (db && a.id && !a.id.startsWith('local_')) {
-      try {
-        await deleteDoc(doc(db, 'activities', a.id));
-      } catch (err) {
-        console.warn('[Firestore] Gagal delete aktivitas:', err);
-      }
-    }
-    siteData.activities.splice(i, 1);
-    renderActivities();
-  };
+  $('#btn-add-act')?.addEventListener('click', () => openActivityModal(null, false));
 }
 
-function showActivityModal(index) {
-  const isEdit = index >= 0;
-  const a = isEdit ? siteData.activities[index] : {};
-
+function openActivityModal(act, isEdit = false, index = -1) {
+  const a = act || {};
   openModal(
     isEdit ? 'Edit Aktivitas' : 'Tambah Aktivitas',
     `
-    <div class="field-group">
-      <label for="modal-act-title">Judul Aktivitas</label>
-      <input type="text" id="modal-act-title" value="${esc(a.title || '')}" placeholder="Judul aktivitas"/>
-    </div>
-    <div class="field-group">
-      <label for="modal-act-desc">Deskripsi</label>
-      <textarea id="modal-act-desc" rows="3" placeholder="Deskripsi aktivitas...">${esc(a.description || '')}</textarea>
-    </div>
     <div class="field-row">
       <div class="field-group">
-        <label for="modal-act-dur">Durasi / Keterangan</label>
-        <input type="text" id="modal-act-dur" value="${esc(a.duration || '')}" placeholder="Contoh: Durasi ~2 - 3 Jam"/>
+        <label for="modal-act-title">Judul Aktivitas</label>
+        <input type="text" id="modal-act-title" value="${esc(a.title || '')}" placeholder="Contoh: Full Body Rafting ±1,5 KM" required/>
       </div>
       <div class="field-group">
-        <label for="modal-act-img">Path Foto</label>
-        <input type="text" id="modal-act-img" value="${esc(a.image || '')}" placeholder="/images/citumang/citumang-01.jpg"/>
+        <label for="modal-act-tag">Badge / Tag</label>
+        <input type="text" id="modal-act-tag" value="${esc(a.tag || '')}" placeholder="Mulai dari Rp69.000"/>
       </div>
+    </div>
+    <div class="field-group">
+      <label for="modal-act-desc">Deskripsi Aktivitas</label>
+      <textarea id="modal-act-desc" rows="3" placeholder="Deskripsi aktivitas...">${esc(a.description || '')}</textarea>
+    </div>
+    <div class="field-group">
+      <label for="modal-act-dur">Keterangan Rute</label>
+      <input type="text" id="modal-act-dur" value="${esc(a.duration || '')}" placeholder="Contoh: Rute ±1,5 KM"/>
+    </div>
+    <div class="field-group">
+      <label>Foto Aktivitas</label>
+      <div class="upload-zone" id="modal-act-zone">
+        <span class="material-symbols-outlined" style="font-size:28px;color:var(--admin-accent);">cloud_upload</span>
+        <p style="font-weight:600;font-size:0.8125rem;">Upload Foto Baru ke Firebase Storage</p>
+        <input type="file" id="modal-act-file" accept="image/*" style="display:none;"/>
+        <img src="${esc(a.image || '')}" id="modal-act-preview" class="upload-preview" style="${a.image ? '' : 'display:none;'}" alt="Preview"/>
+        <div id="modal-act-status" class="upload-status"></div>
+      </div>
+      <input type="text" id="modal-act-img" value="${esc(a.image || '')}" placeholder="/images/citumang/citumang-04.jpg" style="margin-top:0.5rem;"/>
     </div>
   `,
     async () => {
       const data = {
         title: $('#modal-act-title')?.value.trim() || '',
+        tag: $('#modal-act-tag')?.value.trim() || '',
         description: $('#modal-act-desc')?.value.trim() || '',
         duration: $('#modal-act-dur')?.value.trim() || '',
-        image: $('#modal-act-img')?.value.trim() || ''
+        image: $('#modal-act-img')?.value.trim() || '/images/citumang/hero.jpg'
       };
       if (!data.title) return;
 
       if (isEdit && a.id && !a.id.startsWith('local_') && db) {
-        try {
-          await updateDoc(doc(db, 'activities', a.id), {
-            ...data,
-            updatedAt: serverTimestamp()
-          });
-        } catch (err) {
-          console.warn('[Firestore] Gagal update aktivitas:', err);
-        }
+        await updateDoc(doc(db, 'activities', a.id), {
+          ...data,
+          updatedAt: serverTimestamp()
+        });
         siteData.activities[index] = { ...a, ...data };
       } else if (db) {
-        try {
-          const docRef = await addDoc(collection(db, 'activities'), {
-            ...data,
-            createdAt: serverTimestamp()
-          });
-          siteData.activities.push({ id: docRef.id, ...data });
-        } catch (err) {
-          console.warn('[Firestore] Gagal menambah aktivitas:', err);
-          siteData.activities.push({ id: 'local_' + Date.now(), ...data });
-        }
+        const docRef = await addDoc(collection(db, 'activities'), {
+          ...data,
+          createdAt: serverTimestamp()
+        });
+        siteData.activities.push({ id: docRef.id, ...data });
       } else {
         siteData.activities.push({ id: 'local_' + Date.now(), ...data });
       }
@@ -1130,9 +1350,32 @@ function showActivityModal(index) {
       renderActivities();
     }
   );
+
+  setupUploader({
+    zoneId: 'modal-act-zone',
+    inputId: 'modal-act-file',
+    urlInputId: 'modal-act-img',
+    previewId: 'modal-act-preview',
+    statusId: 'modal-act-status',
+    folder: 'activities'
+  });
 }
 
-// ----- GALLERY -----
+window._editActivity = (index) => {
+  openActivityModal(siteData.activities[index], true, index);
+};
+
+window._deleteActivity = async (index) => {
+  const a = siteData.activities[index];
+  if (!confirm(`Hapus aktivitas "${a.title}"?`)) return;
+  if (a.id && !a.id.startsWith('local_') && db) {
+    await deleteDoc(doc(db, 'activities', a.id)).catch(() => null);
+  }
+  siteData.activities.splice(index, 1);
+  renderActivities();
+};
+
+// ----- 9. FOTO / GALLERY (DENGAN UPLOAD FOTO) -----
 function renderGallery() {
   const content = $('#admin-content');
   if (!content) return;
@@ -1141,7 +1384,7 @@ function renderGallery() {
     .map(
       (g, i) => `
     <div class="gallery-item" title="${esc(g.alt || '')}">
-      <img src="${esc(g.image)}" alt="${esc(g.alt || '')}" loading="lazy"/>
+      <img src="${esc(g.image)}" alt="${esc(g.alt || '')}" loading="lazy" onerror="this.src='/images/citumang/hero.jpg';"/>
       <div class="gallery-overlay">
         <button class="btn-icon" style="color:#fff;background:rgba(255,255,255,0.2);margin-right:0.5rem;" onclick="window._editGallery(${i})" title="Edit">
           <span class="material-symbols-outlined" style="font-size:20px;">edit</span>
@@ -1150,6 +1393,9 @@ function renderGallery() {
           <span class="material-symbols-outlined" style="font-size:20px;">delete</span>
         </button>
       </div>
+      <div class="gallery-info">
+        <div class="gallery-title">${esc(g.title || 'Foto Citumang')}</div>
+      </div>
     </div>
   `
     )
@@ -1157,163 +1403,156 @@ function renderGallery() {
 
   content.innerHTML = `
     <div class="content-header">
-      <h3>Foto / Gallery</h3>
-      <p>Kelola koleksi foto dokumentasi wisatawan di Citumang Pangandaran.</p>
+      <h3>Foto &amp; Galeri Website</h3>
+      <p>Kelola koleksi foto dokumentasi nyata wisatawan di Citumang Pangandaran.</p>
     </div>
     <div class="admin-card">
-      <h4><span class="material-symbols-outlined" style="font-size:20px;">collections</span> Koleksi Foto (${siteData.gallery.length})</h4>
-      <div class="gallery-grid" id="gallery-grid">${items}</div>
-      <div class="btn-group">
-        <button class="btn-secondary" id="btn-add-gallery" type="button">
-          <span class="material-symbols-outlined" style="font-size:18px;">add_photo_alternate</span>
-          Tambah Foto
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+        <h4><span class="material-symbols-outlined" style="font-size:20px;">photo_library</span> Galeri (${siteData.gallery.length} foto)</h4>
+        <button class="btn-primary" id="btn-add-gal">
+          <span class="material-symbols-outlined" style="font-size:18px;">add_photo_alternate</span> Upload Foto Baru
         </button>
+      </div>
+      <div class="gallery-grid">
+        ${items}
       </div>
     </div>
   `;
 
-  $('#btn-add-gallery')?.addEventListener('click', () => {
-    openModal(
-      'Tambah Foto Gallery',
-      `
+  $('#btn-add-gal')?.addEventListener('click', () => openGalleryModal(null, false));
+}
+
+function openGalleryModal(item, isEdit = false, index = -1) {
+  const g = item || {};
+  openModal(
+    isEdit ? 'Edit Foto Galeri' : 'Upload Foto Galeri Baru',
+    `
+    <div class="field-group">
+      <label for="modal-gal-title">Judul Foto</label>
+      <input type="text" id="modal-gal-title" value="${esc(g.title || '')}" placeholder="Contoh: Kesegaran Aliran Sungai Citumang" required/>
+    </div>
+    <div class="field-row">
       <div class="field-group">
-        <label for="modal-gal-img">Path Foto</label>
-        <input type="text" id="modal-gal-img" placeholder="/images/citumang/citumang-01.jpg"/>
+        <label for="modal-gal-cat">Kategori</label>
+        <input type="text" id="modal-gal-cat" value="${esc(g.category || 'Wisata Alam')}" placeholder="Wisata Alam / Rafting"/>
       </div>
       <div class="field-group">
-        <label for="modal-gal-alt">Deskripsi Foto / Alt Text</label>
-        <input type="text" id="modal-gal-alt" placeholder="Deskripsi faktual foto"/>
+        <label for="modal-gal-alt">Teks Alt (SEO)</label>
+        <input type="text" id="modal-gal-alt" value="${esc(g.alt || '')}" placeholder="Deskripsi gambar untuk SEO"/>
       </div>
-    `,
-      async () => {
-        const data = {
-          image: $('#modal-gal-img')?.value.trim() || '',
-          alt: $('#modal-gal-alt')?.value.trim() || '',
-          order: siteData.gallery.length + 1
-        };
-        if (!data.image) return;
+    </div>
+    <div class="field-group">
+      <label>Foto Galeri (Upload ke Firebase Storage)</label>
+      <div class="upload-zone" id="modal-gal-zone">
+        <span class="material-symbols-outlined" style="font-size:32px;color:var(--admin-accent);">add_photo_alternate</span>
+        <p style="font-weight:600;font-size:0.8125rem;">Klik untuk pilih file dari perangkat</p>
+        <input type="file" id="modal-gal-file" accept="image/*" style="display:none;"/>
+        <img src="${esc(g.image || '')}" id="modal-gal-preview" class="upload-preview" style="${g.image ? '' : 'display:none;'}" alt="Preview Foto"/>
+        <div id="modal-gal-status" class="upload-status"></div>
+      </div>
+      <input type="text" id="modal-gal-img" value="${esc(g.image || '')}" placeholder="/images/citumang/citumang-01.jpg" style="margin-top:0.5rem;"/>
+    </div>
+  `,
+    async () => {
+      const data = {
+        title: $('#modal-gal-title')?.value.trim() || 'Foto Citumang',
+        category: $('#modal-gal-cat')?.value.trim() || 'Wisata Alam',
+        alt: $('#modal-gal-alt')?.value.trim() || 'Dokumentasi Wisata Citumang Pangandaran',
+        image: $('#modal-gal-img')?.value.trim() || '/images/citumang/hero.jpg'
+      };
 
-        if (db) {
-          try {
-            const docRef = await addDoc(collection(db, 'gallery'), {
-              ...data,
-              createdAt: serverTimestamp()
-            });
-            siteData.gallery.push({ id: docRef.id, ...data });
-          } catch (err) {
-            console.warn('[Firestore] Gagal simpan foto:', err);
-            siteData.gallery.push({ id: 'local_' + Date.now(), ...data });
-          }
-        } else {
-          siteData.gallery.push({ id: 'local_' + Date.now(), ...data });
-        }
-
-        closeModal();
-        renderGallery();
+      if (isEdit && g.id && !g.id.startsWith('local_') && db) {
+        await updateDoc(doc(db, 'gallery', g.id), { ...data, updatedAt: serverTimestamp() });
+        siteData.gallery[index] = { ...g, ...data };
+      } else if (db) {
+        const docRef = await addDoc(collection(db, 'gallery'), {
+          ...data,
+          createdAt: serverTimestamp()
+        });
+        siteData.gallery.push({ id: docRef.id, ...data });
+      } else {
+        siteData.gallery.push({ id: 'local_' + Date.now(), ...data });
       }
-    );
+
+      closeModal();
+      renderGallery();
+    }
+  );
+
+  setupUploader({
+    zoneId: 'modal-gal-zone',
+    inputId: 'modal-gal-file',
+    urlInputId: 'modal-gal-img',
+    previewId: 'modal-gal-preview',
+    statusId: 'modal-gal-status',
+    folder: 'gallery'
+  });
+}
+
+window._editGallery = (index) => {
+  openGalleryModal(siteData.gallery[index], true, index);
+};
+
+window._deleteGallery = async (index) => {
+  const g = siteData.gallery[index];
+  if (!confirm(`Hapus foto "${g.title}"?`)) return;
+  if (g.id && !g.id.startsWith('local_') && db) {
+    await deleteDoc(doc(db, 'gallery', g.id)).catch(() => null);
+  }
+  siteData.gallery.splice(index, 1);
+  renderGallery();
+};
+
+window._goToSection = (sectionName) => {
+  $$('.sidebar-nav-item').forEach((i) => i.classList.remove('active'));
+  $(`.sidebar-nav-item[data-section="${sectionName}"]`)?.classList.add('active');
+  currentSection = sectionName;
+  renderSection(sectionName);
+};
+
+// ===== HELPER: IMAGE UPLOADER HANDLER =====
+function setupUploader({ zoneId, inputId, urlInputId, previewId, statusId, folder }) {
+  const zone = $(`#${zoneId}`);
+  const input = $(`#${inputId}`);
+  const urlInput = $(`#${urlInputId}`);
+  const preview = $(`#${previewId}`);
+  const status = $(`#${statusId}`);
+
+  zone?.addEventListener('click', (e) => {
+    if (e.target !== input) input?.click();
   });
 
-  window._editGallery = (i) => {
-    const g = siteData.gallery[i];
-    openModal(
-      'Edit Foto Gallery',
-      `
-      <div class="field-group">
-        <label for="modal-gal-img">Path Foto</label>
-        <input type="text" id="modal-gal-img" value="${esc(g.image)}"/>
-      </div>
-      <div class="field-group">
-        <label for="modal-gal-alt">Deskripsi Foto / Alt Text</label>
-        <input type="text" id="modal-gal-alt" value="${esc(g.alt || '')}"/>
-      </div>
-    `,
-      async () => {
-        const data = {
-          image: $('#modal-gal-img')?.value.trim() || g.image,
-          alt: $('#modal-gal-alt')?.value.trim() || ''
-        };
-        if (db && g.id && !g.id.startsWith('local_')) {
-          try {
-            await updateDoc(doc(db, 'gallery', g.id), {
-              ...data,
-              updatedAt: serverTimestamp()
-            });
-          } catch (err) {
-            console.warn('[Firestore] Gagal update foto:', err);
-          }
-        }
-        siteData.gallery[i] = { ...g, ...data };
-        closeModal();
-        renderGallery();
-      }
-    );
-  };
+  input?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  window._deleteGallery = async (i) => {
-    if (!confirm('Hapus foto ini dari galeri?')) return;
-    const g = siteData.gallery[i];
-    if (db && g.id && !g.id.startsWith('local_')) {
-      try {
-        await deleteDoc(doc(db, 'gallery', g.id));
-      } catch (err) {
-        console.warn('[Firestore] Gagal delete foto:', err);
+    if (status) {
+      status.className = 'upload-status loading';
+      status.textContent = '⏳ Mengunggah foto ke Firebase Storage...';
+    }
+
+    try {
+      const downloadUrl = await uploadImageToStorage(file, folder);
+      if (urlInput) urlInput.value = downloadUrl;
+      if (preview) {
+        preview.src = downloadUrl;
+        preview.style.display = 'block';
+      }
+      if (status) {
+        status.className = 'upload-status success';
+        status.textContent = '✓ Berhasil diunggah ke Firebase Storage!';
+      }
+    } catch (err) {
+      console.error('[Upload Error]:', err);
+      if (status) {
+        status.className = 'upload-status error';
+        status.textContent = `✗ Gagal upload: ${err.message || 'Periksa Firebase Storage bucket/rules'}`;
       }
     }
-    siteData.gallery.splice(i, 1);
-    renderGallery();
-  };
+  });
 }
 
-// ===== HELPERS =====
-function esc(str) {
-  if (typeof str !== 'string') return str || '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-async function saveDoc(collName, docId, data, statusId) {
-  const statusEl = statusId ? $(`#${statusId}`) : null;
-  if (!db) {
-    if (collName === 'siteConfig') {
-      siteData[docId] = { ...siteData[docId], ...data };
-    }
-    if (statusEl) {
-      statusEl.className = 'status-msg success';
-      statusEl.textContent = '✓ Data berhasil diperbarui (tersimpan lokal).';
-      setTimeout(() => {
-        statusEl.className = 'status-msg';
-      }, 3000);
-    }
-    return;
-  }
-
-  try {
-    await setDoc(doc(db, collName, docId), data, { merge: true });
-    if (collName === 'siteConfig') {
-      siteData[docId] = { ...siteData[docId], ...data };
-    }
-    if (statusEl) {
-      statusEl.className = 'status-msg success';
-      statusEl.textContent = '✓ Berhasil disimpan ke server!';
-      setTimeout(() => {
-        statusEl.className = 'status-msg';
-      }, 3000);
-    }
-  } catch (err) {
-    console.error('[Firestore Save Error]:', err);
-    if (collName === 'siteConfig') {
-      siteData[docId] = { ...siteData[docId], ...data };
-    }
-    if (statusEl) {
-      statusEl.className = 'status-msg error';
-      statusEl.textContent =
-        'Tersimpan lokal (server error: ' + (err.code || err.message) + ')';
-    }
-  }
-}
-
+// ===== HELPER: MODAL CONTROLLERS =====
 function openModal(title, bodyHtml, onSave) {
   const modal = $('#edit-modal');
   const modalContent = $('#edit-modal-content');
@@ -1337,17 +1576,17 @@ function openModal(title, bodyHtml, onSave) {
     const saveBtn = $('#modal-save');
     if (saveBtn) {
       saveBtn.disabled = true;
-      saveBtn.innerHTML = '<span class="spinner"></span>';
+      saveBtn.innerHTML = '<span class="spinner"></span> Menyimpan...';
     }
     try {
       await onSave();
     } catch (err) {
-      alert('Error: ' + err.message);
+      console.error('[Modal Save Error]:', err);
+      alert('Gagal menyimpan: ' + (err.message || 'Kesalahan jaringan.'));
     } finally {
       if (saveBtn) {
         saveBtn.disabled = false;
-        saveBtn.innerHTML =
-          '<span class="material-symbols-outlined" style="font-size:18px;">save</span> Simpan';
+        saveBtn.textContent = 'Simpan';
       }
     }
   });
@@ -1358,13 +1597,48 @@ function closeModal() {
   if (modal) modal.classList.remove('show');
 }
 
-// Jalankan saat DOM siap
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    initDOMEvents();
-    initAuth();
-  });
-} else {
-  initDOMEvents();
-  initAuth();
+// ===== HELPER: PERSISTENCE TO FIRESTORE =====
+async function saveDoc(collName, docId, data, statusId) {
+  const statusEl = statusId ? $(`#${statusId}`) : null;
+
+  if (!db) {
+    if (statusEl) {
+      statusEl.className = 'status-msg error';
+      statusEl.textContent = '✗ Gagal: Koneksi Firebase belum terhubung.';
+    }
+    return;
+  }
+
+  try {
+    await setDoc(doc(db, collName, docId), data, { merge: true });
+    if (collName === 'siteConfig') {
+      siteData[docId] = { ...siteData[docId], ...data };
+    }
+    if (statusEl) {
+      statusEl.className = 'status-msg success';
+      statusEl.textContent = '✓ Berhasil disimpan secara permanen ke server!';
+      setTimeout(() => {
+        statusEl.className = 'status-msg';
+      }, 3500);
+    }
+  } catch (err) {
+    console.error('[Firestore Save Error]:', err);
+    if (statusEl) {
+      statusEl.className = 'status-msg error';
+      statusEl.textContent = `✗ Gagal menyimpan ke server: ${err.message || err.code || 'Izin akses ditolak'}`;
+    }
+    throw err;
+  }
 }
+
+// ===== HELPER: XSS ESCAPING =====
+function esc(str) {
+  if (str === null || str === undefined) return '';
+  if (typeof str !== 'string') return str || '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Inisialisasi saat DOM siap
+document.addEventListener('DOMContentLoaded', initAuth);

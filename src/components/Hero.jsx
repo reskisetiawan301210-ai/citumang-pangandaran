@@ -46,7 +46,7 @@ export default function Hero({ onOpenReservation }) {
 
         {/* Subtitle */}
         <p className="font-body-lg text-body-md md:text-body-lg text-surface-container-high max-w-2xl font-light mb-10 leading-relaxed">
-          Rasakan kejernihan air pirus alami, keteduhan hutan hujan karst, dan pengalaman petualangan body rafting yang tak terlupakan di suaka lembah sungai Pangandaran.
+          Rasakan kesegaran air jernih alami, keteduhan tebing karst, dan pengalaman body rafting rute ±1,5 KM bersama pemandu profesional di Citumang Pangandaran.
         </p>
 
         {/* Action Buttons */}

@@ -6,16 +6,16 @@
 
 export const siteConfig = {
   name: "Citumang Pangandaran",
-  tagline: "Wisata Alam & River Tubing",
-  description: "Suaka ngarai sungai tropis legendaris di Pangandaran, Jawa Barat. Pengalaman body rafting eksklusif mengarungi kejernihan air pirus alami dan gua karst purba.",
+  tagline: "Body Rafting & Wisata Alam",
+  description: "Wisata alam dan body rafting aliran sungai jernih di Citumang Pangandaran, Jawa Barat. Paket pengarungan rute ±1,5 KM lengkap dengan pemandu profesional, perlengkapan pelampung, asuransi, dan makan nasi liwet.",
   pricing: {
     startingPrice: "Mulai dari Rp69.000",
     badge: "Mulai dari Rp69.000"
   },
   location: {
-    name: "Citumang (Green Valley)",
-    sub: "Kec. Parigi, Pangandaran, Jawa Barat",
-    fullAddress: "Bojong, Parigi, Pangandaran Regency, West Java 46393",
+    name: "Citumang",
+    sub: "Desa Bojong, Kec. Parigi, Kab. Pangandaran, Jawa Barat",
+    fullAddress: "Citumang, Desa Bojong, Kecamatan Parigi, Kabupaten Pangandaran, Jawa Barat 46393",
     googleMapsUrl: "https://maps.google.com/?q=Citumang+Pangandaran"
   },
   operatingHours: {
@@ -33,8 +33,9 @@ export const siteConfig = {
     tiktokLink: "https://www.tiktok.com/@citumangpangandaran01"
   },
   logo: "/images/logo-circle.png",
-  // FOTO UTAMA DARI FOTO PERTAMA USER
+  // FOTO UTAMA DESKTOP & MOBILE
   heroImage: "/images/citumang/hero.jpg",
+  heroMobileImage: "/images/citumang/hero-mobile.jpg",
   // FOTO IDENTITAS PROVIDER PENGELOLA
   providerImage: "/images/provider/provider.png",
   officialFacilities: [
@@ -42,7 +43,7 @@ export const siteConfig = {
     "Perlengkapan body rafting",
     "Pemandu profesional",
     "Jasa dokumentasi",
-    "Makan Nasi Liwet",
+    "Makan nasi liwet",
     "Asuransi",
     "Tempat penyimpanan barang",
     "Dry bag",
@@ -51,8 +52,8 @@ export const siteConfig = {
   packages: [
     "Paket Body Rafting Lengkap (Mulai dari Rp69.000)",
     "River Body Rafting (Full Rute ±1,5 KM)",
-    "Eksplorasi Gua Karst & Stalaktit",
-    "Family Adventure (Ramah Anak & Lansia)",
+    "Berenang & Relaksasi Air Jernih",
+    "Family Adventure (Paket Keluarga)",
     "Paket Lengkap + Makan Nasi Liwet"
   ]
 };

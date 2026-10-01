@@ -1,12 +1,13 @@
 /**
  * Firebase Configuration
- * Konfigurasi Firebase untuk autentikasi admin dan database Firestore.
+ * Konfigurasi Firebase untuk autentikasi admin, database Firestore, dan Firebase Storage.
  * Semua nilai diambil dari environment variables (.env / Vercel Environment Variables).
  */
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const rawConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -42,6 +43,7 @@ export function checkFirebaseEnv() {
 let app = null;
 let auth = null;
 let db = null;
+let storage = null;
 let initError = null;
 
 const envCheck = checkFirebaseEnv();
@@ -56,12 +58,55 @@ if (!envCheck.isComplete) {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
     db = getFirestore(app);
+    try {
+      storage = getStorage(app);
+    } catch (storageErr) {
+      console.warn('[Firebase Storage Warn]:', storageErr.message);
+    }
   } catch (err) {
     initError = err;
     console.error('[Firebase Init Error]:', err);
   }
 }
 
-export { app, auth, db, initError };
+/**
+ * Upload file gambar langsung ke Firebase Storage
+ * @param {File} file - File gambar dari input file
+ * @param {string} folder - Folder tujuan (default: 'citumang')
+ * @returns {Promise<string>} Download URL permanen dari Firebase Storage
+ */
+export async function uploadImageToStorage(file, folder = 'citumang') {
+  if (!storage) {
+    throw new Error('Firebase Storage belum aktif atau belum terkonfigurasi. Pastikan VITE_FIREBASE_STORAGE_BUCKET sudah diatur di environment variable.');
+  }
+  if (!file) {
+    throw new Error('File gambar belum dipilih.');
+  }
+
+  // Validasi ukuran: max 10MB
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error('Ukuran file maksimal adalah 10MB.');
+  }
+
+  // Nama file unik dengan timestamp
+  const ext = file.name ? file.name.split('.').pop().toLowerCase() : 'jpg';
+  const cleanBase = file.name ? file.name.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 30) : 'image';
+  const fileName = `${Date.now()}_${cleanBase}.${ext}`;
+  const filePath = `${folder}/${fileName}`;
+
+  const storageRef = ref(storage, filePath);
+  const metadata = {
+    contentType: file.type || 'image/jpeg',
+    customMetadata: {
+      uploadedAt: new Date().toISOString()
+    }
+  };
+
+  const snapshot = await uploadBytes(storageRef, file, metadata);
+  const downloadUrl = await getDownloadURL(snapshot.ref);
+  return downloadUrl;
+}
+
+export { app, auth, db, storage, initError };
 export const isFirebaseReady = Boolean(app && auth && !initError);
 export default app;

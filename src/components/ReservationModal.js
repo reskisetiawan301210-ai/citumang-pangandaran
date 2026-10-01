@@ -94,9 +94,7 @@ export function initReservationModal() {
     const nameVal = document.getElementById('res-name').value.trim();
     const phoneVal = document.getElementById('res-phone').value.trim();
     const dateVal = document.getElementById('res-date').value;
-    const peopleVal = document.getElementById('res-people').value;
     const packageVal = packageSelect ? packageSelect.value : siteConfig.packages[0];
-    const notesVal = document.getElementById('res-notes').value.trim();
 
     let hasError = false;
 
@@ -115,11 +113,6 @@ export function initReservationModal() {
 
     if (!dateVal) {
       showError('res-date-error', 'Pilih tanggal rencana kunjungan');
-      hasError = true;
-    }
-
-    if (!peopleVal || parseInt(peopleVal) < 1) {
-      showError('res-people-error', 'Minimal jumlah peserta adalah 1 orang');
       hasError = true;
     }
 
@@ -146,9 +139,7 @@ export function initReservationModal() {
 • Nama: ${nameVal}
 • No. WhatsApp: ${phoneVal}
 • Tanggal Kunjungan: ${formattedDate}
-• Jumlah Orang: ${peopleVal} Orang
 • Paket/Aktivitas: ${packageVal}
-${notesVal ? `• Catatan Khusus: ${notesVal}` : '• Catatan Khusus: -'}
 
 Mohon informasi ketersediaan slot pemandu dan rincian pembayarannya.
 Terima kasih!`;
@@ -172,7 +163,7 @@ Terima kasih!`;
   }
 
   function clearErrors() {
-    ['res-name-error', 'res-phone-error', 'res-date-error', 'res-people-error'].forEach(id => {
+    ['res-name-error', 'res-phone-error', 'res-date-error'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
         el.textContent = '';

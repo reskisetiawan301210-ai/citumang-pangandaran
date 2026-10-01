@@ -1,7 +1,7 @@
 /**
  * main.js
  * Titik masuk utama website Citumang Pangandaran
- * Menginisialisasi komponen: PageLoader, Navigation, Gallery, Accordion, ReservationModal, ScrollReveal.
+ * Menginisialisasi komponen: PageLoader, Navigation, Gallery, Accordion, ReservationModal, ScrollReveal, serta sinkronisasi data dinamis dari Firestore.
  */
 
 import { siteConfig } from './config/siteConfig.js';
@@ -11,6 +11,7 @@ import { initGallery } from './components/GalleryModal.js';
 import { initAccordion } from './components/Accordion.js';
 import { initReservationModal } from './components/ReservationModal.js';
 import { initScrollReveal } from './components/ScrollReveal.js';
+import { syncPublicSiteData } from './services/siteDataService.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // Inisialisasi Opening Loader Animation
@@ -19,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Inisialisasi Sticky Navigation & Mobile Menu
   initNavigation();
 
-  // Inisialisasi 12 Foto Galeri & Lightbox
+  // Inisialisasi Galeri & Lightbox
   initGallery();
 
   // Inisialisasi FAQ & Panduan Accordion
@@ -30,6 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Inisialisasi Scroll Reveal
   initScrollReveal();
+
+  // Sinkronisasi data CMS dari Firestore di background
+  syncPublicSiteData();
 
   console.log(`[${siteConfig.name}] Website berhasil dimuat. WhatsApp Hotline: ${siteConfig.contact.whatsappDisplay}`);
 });

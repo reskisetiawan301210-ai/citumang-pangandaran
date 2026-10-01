@@ -6,9 +6,7 @@ export default function ReservationModal({ isOpen, onClose, defaultPackage = '' 
     name: '',
     phone: '',
     date: '',
-    people: '2',
-    packageType: defaultPackage || siteConfig.packages[0],
-    notes: ''
+    packageType: defaultPackage || siteConfig.packages[0]
   });
 
   const [errors, setErrors] = useState({});
@@ -35,9 +33,6 @@ export default function ReservationModal({ isOpen, onClose, defaultPackage = '' 
     }
     if (!formData.date) {
       newErrors.date = 'Pilih tanggal rencana kunjungan';
-    }
-    if (!formData.people || parseInt(formData.people) < 1) {
-      newErrors.people = 'Minimal 1 orang';
     }
     return newErrors;
   };
@@ -71,9 +66,7 @@ export default function ReservationModal({ isOpen, onClose, defaultPackage = '' 
 • Nama: ${formData.name.trim()}
 • No. WhatsApp: ${formData.phone.trim()}
 • Tanggal Kunjungan: ${formattedDate}
-• Jumlah Orang: ${formData.people} Orang
 • Paket/Aktivitas: ${formData.packageType}
-${formData.notes.trim() ? `• Catatan: ${formData.notes.trim()}` : '• Catatan: -'}
 
 Mohon informasi ketersediaan slot pemandu dan rincian pembayarannya.
 Terima kasih!`;
@@ -143,42 +136,22 @@ Terima kasih!`;
             {errors.name && <p className="text-error text-xs mt-1">{errors.name}</p>}
           </div>
 
-          {/* Nomor WhatsApp & Jumlah Orang */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface mb-1.5">
-                No. WhatsApp <span className="text-error">*</span>
-              </label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                placeholder="0812xxxxxxxx"
-                className={`w-full px-4 py-2.5 rounded-lg bg-surface-container-low border ${
-                  errors.phone ? 'border-error ring-1 ring-error' : 'border-outline-variant'
-                } text-on-surface text-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all`}
-              />
-              {errors.phone && <p className="text-error text-xs mt-1">{errors.phone}</p>}
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface mb-1.5">
-                Jumlah Peserta <span className="text-error">*</span>
-              </label>
-              <input
-                type="number"
-                name="people"
-                min="1"
-                max="200"
-                value={formData.people}
-                onChange={handleChange}
-                className={`w-full px-4 py-2.5 rounded-lg bg-surface-container-low border ${
-                  errors.people ? 'border-error ring-1 ring-error' : 'border-outline-variant'
-                } text-on-surface text-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all`}
-              />
-              {errors.people && <p className="text-error text-xs mt-1">{errors.people}</p>}
-            </div>
+          {/* Nomor WhatsApp */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface mb-1.5">
+              No. WhatsApp <span className="text-error">*</span>
+            </label>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              placeholder="0812xxxxxxxx"
+              className={`w-full px-4 py-2.5 rounded-lg bg-surface-container-low border ${
+                errors.phone ? 'border-error ring-1 ring-error' : 'border-outline-variant'
+              } text-on-surface text-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all`}
+            />
+            {errors.phone && <p className="text-error text-xs mt-1">{errors.phone}</p>}
           </div>
 
           {/* Tanggal Kunjungan */}
@@ -218,20 +191,6 @@ Terima kasih!`;
             </select>
           </div>
 
-          {/* Catatan Tambahan */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface mb-1.5">
-              Catatan / Permintaan Khusus (Opsional)
-            </label>
-            <textarea
-              name="notes"
-              rows={2}
-              value={formData.notes}
-              onChange={handleChange}
-              placeholder="Contoh: Butuh penjemputan dari hotel di Pantai Pangandaran, ada anak usia 6 tahun, dsb."
-              className="w-full px-4 py-2.5 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface text-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all resize-none"
-            />
-          </div>
 
           {/* Info Hotline Note */}
           <div className="bg-surface-container-low p-3 rounded-lg flex items-start gap-2.5 text-xs text-on-surface-variant">

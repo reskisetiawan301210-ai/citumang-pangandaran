@@ -10,8 +10,8 @@ export const activitiesData = [
     tag: "Mulai dari Rp69.000",
     tagType: "primary",
     image: "/images/citumang/citumang-04.jpg",
-    description: "Pengarungan rute aliran sungai dan tebing karst Citumang sepanjang ±1,5 KM mengenakan rompi pelampung standar keselamatan dipandu instruktur profesional.",
-    duration: "Durasi ~2 - 3 Jam",
+    description: "Pengarungan rute aliran sungai dan tebing karst Citumang sepanjang ±1,5 KM mengenakan rompi pelampung standar keselamatan dipandu pemandu profesional.",
+    duration: "Rute ±1,5 KM",
     icon: "kayaking"
   },
   {
@@ -21,7 +21,7 @@ export const activitiesData = [
     tagType: "neutral",
     image: "/images/citumang/citumang-03.jpg",
     description: "Berenang dan mengapung santai di aliran air sungai karst alami yang jernih dan segar di bawah naungan tebing batu kapur yang asri.",
-    duration: "Bebas Waktu",
+    duration: "Air Jernih",
     icon: "pool"
   },
   {
@@ -36,12 +36,12 @@ export const activitiesData = [
   },
   {
     id: 4,
-    title: "Aktivitas Ramah Keluarga",
+    title: "Aktivitas Bersama Keluarga",
     tag: "Lengkap + Asuransi",
     tagType: "neutral",
     image: "/images/citumang/citumang-05.jpg",
-    description: "Aktivitas berenang di sungai yang aman untuk keluarga dan anak-anak dengan rompi pelampung standar resmi serta pendampingan ranger.",
-    duration: "Semua Usia",
+    description: "Aktivitas berenang di aliran sungai jernih untuk keluarga dengan perlengkapan pelampung resmi serta pendampingan pemandu profesional.",
+    duration: "Pendamping Pemandu",
     icon: "family_restroom"
   }
 ];

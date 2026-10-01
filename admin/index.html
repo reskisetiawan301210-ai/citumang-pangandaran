@@ -348,6 +348,38 @@
       min-height: 80px;
     }
 
+    /* Image Upload Zone */
+    .upload-zone {
+      border: 2px dashed var(--admin-border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      text-align: center;
+      background: var(--admin-surface);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .upload-zone:hover {
+      border-color: var(--admin-accent);
+      background: rgba(0, 106, 97, 0.04);
+    }
+    .upload-preview {
+      max-width: 100%;
+      max-height: 180px;
+      border-radius: 8px;
+      object-fit: cover;
+      margin: 0.75rem auto 0;
+      display: block;
+      border: 1px solid var(--admin-border);
+    }
+    .upload-status {
+      font-size: 0.75rem;
+      margin-top: 0.5rem;
+      font-weight: 500;
+    }
+    .upload-status.success { color: var(--admin-success); }
+    .upload-status.error { color: var(--admin-danger); }
+    .upload-status.loading { color: var(--admin-accent); }
+
     /* Buttons */
     .btn-primary {
       display: inline-flex;
@@ -748,6 +780,14 @@
         <button class="sidebar-nav-item active" data-section="overview">
           <span class="material-symbols-outlined" style="font-size:20px;">dashboard</span>
           Dashboard
+        </button>
+        <button class="sidebar-nav-item" data-section="provider">
+          <span class="material-symbols-outlined" style="font-size:20px;">badge</span>
+          Identitas Provider
+        </button>
+        <button class="sidebar-nav-item" data-section="hero">
+          <span class="material-symbols-outlined" style="font-size:20px;">image</span>
+          Hero &amp; Beranda
         </button>
         <button class="sidebar-nav-item" data-section="info">
           <span class="material-symbols-outlined" style="font-size:20px;">info</span>

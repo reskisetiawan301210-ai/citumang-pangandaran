@@ -89,10 +89,10 @@ export const galleryData = [
     id: 9,
     image: "/images/citumang/citumang-09.jpg",
     webp: "/images/citumang/citumang-09.webp",
-    title: "Aliran Ngarai Hijau Citumang",
-    description: "Pemandangan ngarai sungai tropis dengan air jernih, wisatawan berenang di aliran sungai dinaungi kanopi hutan lebat.",
+    title: "Aliran Sungai Alami Citumang",
+    description: "Pemandangan aliran sungai dengan air jernih, wisatawan berenang di aliran sungai dinaungi pepohonan alami.",
     category: "Wisata Alam",
-    alt: "Pemandangan aliran ngarai sungai jernih dan wisatawan berenang di Citumang",
+    alt: "Pemandangan aliran sungai jernih dan wisatawan berenang di Citumang",
     span: "md:col-span-4 h-80 md:h-[460px]"
   },
   {

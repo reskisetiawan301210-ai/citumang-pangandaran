@@ -7,22 +7,22 @@ export const featuresData = [
   {
     icon: "water",
     title: "Air Jernih Alami",
-    description: "Kejernihan air pirus bersumber murni dari mata air karst pegunungan tanpa tercemar limbah pemukiman perkotaan."
+    description: "Kejernihan air alami bersumber murni dari mata air karst pegunungan di kawasan Citumang Pangandaran."
   },
   {
     icon: "park",
-    title: "Kanopi Hutan Asri",
-    description: "Lembah sungai teduh dinaungi pepohonan jati lebat dan akar beringin gantung yang menjaga kesegaran udara alami sepanjang hari."
+    title: "Tebing Karst Asri",
+    description: "Lembah aliran sungai teduh dinaungi pepohonan alami dan tebing karst yang menjaga suasana sejuk alami."
   },
   {
     icon: "health_and_safety",
-    title: "Aman untuk Semua",
-    description: "Standar keselamatan tinggi mencakup pelampung tersertifikasi, asuransi pengunjung, dan rasio pemandu ranger yang memadai."
+    title: "Standar Keselamatan",
+    description: "Keselamatan menjadi prioritas dengan perlengkapan pelampung dan helm, asuransi pengunjung, serta pendampingan pemandu profesional."
   },
   {
     icon: "diversity_1",
     title: "Momen Berharga",
-    description: "Menghadirkan kebersamaan hangat dan kenangan tak terlupakan bagi keluarga, rombongan perusahaan, maupun pasangan traveler."
+    description: "Menghadirkan kebersamaan hangat dan kenangan tak terlupakan bagi keluarga, rombongan, maupun rekan traveler."
   }
 ];
 
@@ -31,32 +31,32 @@ export const facilitiesData = [
   {
     icon: "kayaking",
     title: "Full Body Rafting ±1,5 KM",
-    description: "Pengalaman pengarungan sungai jernih menyusuri keindahan alami ngarai Citumang sepanjang ±1,5 kilometer."
+    description: "Pengalaman pengarungan sungai jernih menyusuri keindahan alami aliran sungai Citumang sepanjang ±1,5 kilometer."
   },
   {
     icon: "vest",
     title: "Perlengkapan Body Rafting",
-    description: "Rompi pelampung (life jacket) standar keamanan resmi dan peralatan pelindung selama aktivitas air."
+    description: "Rompi pelampung (life jacket) dan peralatan standar pengarungan selama aktivitas di sungai."
   },
   {
     icon: "badge",
     title: "Pemandu Profesional",
-    description: "Didampingi instruktur river guide lokal berlisensi dan berpengalaman dalam navigasi sungai dan keselamatan air."
+    description: "Didampingi pemandu lokal berpengalaman mendampingi setiap pengarungan dan rute body rafting."
   },
   {
     icon: "photo_camera",
     title: "Jasa Dokumentasi",
-    description: "Pengabadian momen petualangan seru Anda selama menyusuri jeram, gua, dan spot foto terbaik Citumang."
+    description: "Pengabadian momen petualangan seru Anda selama menyusuri rute air, tebing karst, dan spot foto terbaik Citumang."
   },
   {
     icon: "restaurant",
     title: "Makan Nasi Liwet",
-    description: "Sajian khas Sunda nasi liwet lezat yang disajikan hangat lengkap dengan lauk pauk khas tradisional."
+    description: "Sajian khas Sunda makan nasi liwet lezat yang disajikan hangat lengkap dengan lauk pauk khas tradisional."
   },
   {
     icon: "health_and_safety",
     title: "Asuransi",
-    description: "Perlindungan asuransi keselamatan resmi bagi setiap wisatawan selama berada di kawasan wisata."
+    description: "Perlindungan asuransi resmi bagi setiap wisatawan selama mengikuti aktivitas wisata."
   },
   {
     icon: "inventory_2",
@@ -66,11 +66,11 @@ export const facilitiesData = [
   {
     icon: "backpack",
     title: "Dry Bag",
-    description: "Tas anti air untuk mengamankan barang berharga dan gadget selama pengarungan rute air."
+    description: "Tas anti air untuk mengamankan barang bawaan selama pengarungan rute air."
   },
   {
-    icon: "water_ph",
+    icon: "spa",
     title: "Kolam Terapi Ikan",
-    description: "Sensasi relaksasi alami di kolam terapi ikan untuk memanjakan dan menyegarkan kaki setelah beraktivitas."
+    description: "Relaksasi alami merendam kaki bersama ikan terapi untuk menyegarkan tubuh setelah beraktivitas body rafting."
   }
 ];
