@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // FUNGSI KEAMANAN UTAMA:
+    // Pastikan user sedang login DAN UID-nya terdaftar di koleksi 'admins'
+    function isAdmin() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // ==========================================
+    // 1. DATA PUBLIK WEBSITE
+    // Pengunjung boleh membaca data untuk dirender di website.
+    // Hanya Admin yang terdaftar yang boleh menambah/mengubah/menghapus data.
+    // ==========================================
+    match /siteConfig/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /facilities/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /activities/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /gallery/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // 2. DATA SENSITIF (KOLEKSI ADMIN)
+    // ==========================================
+    match /admins/{userId} {
+      // Admin sah boleh melihat daftar admin
+      allow read: if isAdmin();
+      
+      // SANGAT PENTING: Mencegah bypass dari client-side.
+      // Tidak boleh ada penambahan/perubahan admin melalui aplikasi web (meski oleh admin sekalipun).
+      // Penambahan admin BARU HANYA BOLEH dilakukan secara manual melalui Firebase Console.
+      allow write: if false; 
+    }
+  }
+}

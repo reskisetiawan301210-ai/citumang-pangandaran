@@ -129,16 +129,17 @@ async function verifyAdminAccess(user) {
           return { authorized: false, reason: 'Peran akun Anda bukan administrator.' };
         }
       } else {
-        // Jika dokumen admin belum ada, daftarkan akun pemilik ini sebagai admin terverifikasi
-        await setDoc(doc(db, 'admins', user.uid), {
-          email: user.email,
-          role: 'admin',
-          isAdmin: true,
-          createdAt: serverTimestamp()
-        }, { merge: true }).catch(() => null);
+        // Jika dokumen admin belum ada, TOLAK AKSES
+        return { 
+          authorized: false, 
+          reason: `Akses Ditolak: UID Anda (${user.uid}) belum didaftarkan di koleksi 'admins' oleh pemilik sistem.` 
+        };
       }
-    } catch {
-      // Abaikan jika Firestore rules awal belum mengizinkan baca admins
+    } catch (err) {
+      return { 
+        authorized: false, 
+        reason: 'Gagal memverifikasi hak akses ke Firestore. (Mungkin offline atau Permission Denied)' 
+      };
     }
   }
 
