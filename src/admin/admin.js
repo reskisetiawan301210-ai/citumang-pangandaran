@@ -349,12 +349,17 @@ async function loadAllData() {
     return;
   }
 
+  firebaseStatus.errors = [];
+
   try {
-    // Cek koneksi ringan dengan memanggil 1 doc (jika timeout/offline, ini akan throw)
-    await getDoc(doc(db, 'siteConfig', 'ping_check')).catch(() => {});
+    // Cek koneksi ringan dengan memanggil 1 doc.
+    // Jika offline (db belum dibuat) atau permission denied, ini akan THROW error.
+    // Jika berhasil konek tapi doc tidak ada, ini tidak throw error (snapshot.exists() == false).
+    await getDoc(doc(db, 'siteConfig', 'ping_check'));
     firebaseStatus.firestoreConnected = true;
   } catch (e) {
     firebaseStatus.firestoreConnected = false;
+    firebaseStatus.errors.push(`Ping Error: ${e.message}`);
   }
 
   try {
@@ -724,10 +729,16 @@ function renderOverview() {
           <h4 style="color:#856404;display:flex;align-items:center;gap:0.5rem;margin:0 0 0.5rem 0;">
             <span class="material-symbols-outlined">cloud_off</span> Mode Offline / Fallback Aktif
           </h4>
-          <p style="margin:0;font-size:0.875rem;">
-            Gagal terhubung ke Firestore Database (Client is offline / Permission Denied).<br/>
-            <strong>Data yang Anda lihat saat ini adalah data DEFAULT statis.</strong><br/>
-            Pastikan Database Firestore sudah dibuat dan Security Rules mengizinkan <code>read, write</code> untuk user terautentikasi.
+          <p style="margin:0 0 0.5rem 0;font-size:0.875rem;">
+            Gagal memuat data dari Firestore Database. Data yang Anda lihat saat ini adalah <strong>data DEFAULT statis</strong>.
+          </p>
+          <div style="background:#f8d7da;color:#721c24;padding:0.5rem;border-radius:4px;font-family:monospace;font-size:0.75rem;margin-bottom:0.5rem;max-height:100px;overflow-y:auto;">
+            ${firebaseStatus.errors.length > 0 ? firebaseStatus.errors.map(e => `• ${esc(e)}`).join('<br/>') : 'Unknown error'}
+          </div>
+          <p style="margin:0;font-size:0.75rem;">
+            <strong>Diagnosis:</strong><br/>
+            Jika error berisi "<strong>offline</strong>", berarti database Firestore belum dibuat di Firebase Console atau jaringan terputus.<br/>
+            Jika error berisi "<strong>permission denied</strong>", berarti Security Rules Firestore menolak akses baca. Pastikan rules mengizinkan <code>read, write: if request.auth != null;</code>.
           </p>
         </div>
       ` : `
