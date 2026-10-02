@@ -1549,19 +1549,40 @@ function openGalleryModal(item, isEdit = false, index = -1) {
       <div class="upload-zone" id="modal-gal-zone">
         <span class="material-symbols-outlined" style="font-size:32px;color:var(--admin-accent);">add_photo_alternate</span>
         <p style="font-weight:600;font-size:0.8125rem;">Klik untuk pilih file dari perangkat</p>
-        <input type="file" id="modal-gal-file" accept="image/*" style="display:none;"/>
+        <input type="file" id="modal-gal-file" accept="image/jpeg,image/png,image/webp" style="display:none;"/>
         <img src="${esc(g.image || '')}" id="modal-gal-preview" class="upload-preview" style="${g.image ? '' : 'display:none;'}" alt="Preview Foto"/>
         <div id="modal-gal-status" class="upload-status"></div>
       </div>
-      <input type="text" id="modal-gal-img" value="${esc(g.image || '')}" placeholder="/images/citumang/citumang-01.jpg" style="margin-top:0.5rem;"/>
+      <input type="hidden" id="modal-gal-img" value="${esc(g.image || '')}"/>
     </div>
   `,
     async () => {
+      const imageUrl = $('#modal-gal-img')?.value.trim();
+
+      // VALIDASI KRITIS: Jangan izinkan simpan tanpa foto yang sudah diupload
+      if (!imageUrl) {
+        alert('Pilih dan upload foto terlebih dahulu sebelum menyimpan.');
+        throw new Error('Foto belum dipilih atau upload belum selesai.');
+      }
+
+      // Cek apakah upload sedang berjalan
+      const statusEl = $('#modal-gal-status');
+      if (statusEl && statusEl.classList.contains('loading')) {
+        alert('Upload foto masih berjalan. Tunggu hingga selesai.');
+        throw new Error('Upload sedang berjalan.');
+      }
+
+      // Cek apakah upload gagal (status error)
+      if (statusEl && statusEl.classList.contains('error')) {
+        alert('Upload foto gagal. Silakan pilih ulang file dan coba lagi.');
+        throw new Error('Upload gagal.');
+      }
+
       const data = {
         title: $('#modal-gal-title')?.value.trim() || 'Foto Citumang',
         category: $('#modal-gal-cat')?.value.trim() || 'Wisata Alam',
         alt: $('#modal-gal-alt')?.value.trim() || 'Dokumentasi Wisata Citumang Pangandaran',
-        image: $('#modal-gal-img')?.value.trim() || '/images/citumang/hero.jpg'
+        image: imageUrl
       };
 
       if (isEdit && g.id && !g.id.startsWith('local_') && db) {
@@ -1629,18 +1650,36 @@ function setupUploader({ zoneId, inputId, urlInputId, previewId, statusId, folde
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // 1. Tampilkan local preview seketika
+    const objectUrl = URL.createObjectURL(file);
+    if (preview) {
+      preview.src = objectUrl;
+      preview.style.display = 'block';
+    }
+
+    // 2. Kunci tombol simpan
+    const saveBtn = $('#modal-save');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<span class="spinner"></span> Sedang Upload...';
+    }
+
     if (status) {
       status.className = 'upload-status loading';
-      status.textContent = '⏳ Mengunggah foto ke Firebase Storage...';
+      status.textContent = '⏳ Mengunggah foto ke server...';
     }
 
     try {
+      // 3. Upload ke Storage
       const downloadUrl = await uploadImageToStorage(file, folder);
-      if (urlInput) urlInput.value = downloadUrl;
-      if (preview) {
-        preview.src = downloadUrl;
-        preview.style.display = 'block';
+      
+      // 4. Update nilai input tersembunyi
+      if (urlInput) {
+        urlInput.value = downloadUrl;
+        // Trigger event input agar framework/modal tahu ada perubahan (jika perlu)
+        urlInput.dispatchEvent(new Event('input', { bubbles: true }));
       }
+      
       if (status) {
         status.className = 'upload-status success';
         status.textContent = '✓ Berhasil diunggah ke Firebase Storage!';
@@ -1649,7 +1688,16 @@ function setupUploader({ zoneId, inputId, urlInputId, previewId, statusId, folde
       console.error('[Upload Error]:', err);
       if (status) {
         status.className = 'upload-status error';
-        status.textContent = `✗ Gagal upload: ${err.message || 'Periksa Firebase Storage bucket/rules'}`;
+        status.textContent = `✗ Gagal upload: ${err.message || 'Periksa koneksi atau rules'}`;
+      }
+    } finally {
+      // Bebaskan resource local URL
+      URL.revokeObjectURL(objectUrl);
+      
+      // Buka kunci tombol simpan
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;">save</span> Simpan';
       }
     }
   });

@@ -1,0 +1,29 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Pengunjung boleh melihat/download gambar (untuk website publik)
+    match /{allPaths=**} {
+      allow read: if true;
+    }
+
+    // Hanya user yang sudah login yang boleh upload
+    // (Firestore 'admins' collection check tidak tersedia di Storage Rules,
+    //  tapi karena Firebase Auth sign-up sudah dinonaktifkan,
+    //  hanya akun yang terdaftar yang bisa login)
+    match /gallery/{fileName} {
+      allow write: if request.auth != null
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+    match /citumang/{fileName} {
+      allow write: if request.auth != null
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+    match /hero/{fileName} {
+      allow write: if request.auth != null
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+  }
+}
