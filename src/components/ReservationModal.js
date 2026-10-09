@@ -6,6 +6,8 @@
 
 import { siteConfig } from '../config/siteConfig.js';
 
+let isInitialized = false;
+
 export function initReservationModal() {
   const modal = document.getElementById('reservation-modal');
   const form = document.getElementById('reservation-form');
@@ -19,7 +21,6 @@ export function initReservationModal() {
     modal.classList.add('flex');
     document.body.classList.add('overflow-hidden');
 
-    // Focus ke input nama
     const nameInput = document.getElementById('res-name');
     if (nameInput) setTimeout(() => nameInput.focus(), 100);
   };
@@ -31,6 +32,9 @@ export function initReservationModal() {
     document.body.classList.remove('overflow-hidden');
     clearErrors();
   };
+
+  if (isInitialized) return;
+  isInitialized = true;
 
   if (closeBtn) {
     closeBtn.addEventListener('click', window.closeReservationModal);
@@ -50,12 +54,13 @@ export function initReservationModal() {
     }
   });
 
-  // Sambungkan semua elemen dengan data-action reservation
-  document.querySelectorAll('[data-action="reservation"], a[href="#reservasi-modal"]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+  // Delegasi klik global untuk semua tombol reservasi di seluruh halaman
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="reservation"], a[href="#reservasi-modal"]');
+    if (btn) {
       e.preventDefault();
       window.openReservationModal();
-    });
+    }
   });
 
   // Validasi & Submit Form
@@ -99,7 +104,8 @@ Terima kasih!`;
     // Buka WhatsApp di tab baru
     window.open(waUrl, '_blank', 'noopener,noreferrer');
 
-    // Tutup modal
+    // Tutup modal & bersihkan form
+    form.reset();
     window.closeReservationModal();
   });
 

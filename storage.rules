@@ -1,29 +1,74 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Pengunjung boleh melihat/download gambar (untuk website publik)
+
+    // =============================================
+    // PENGUNJUNG PUBLIK: Hanya boleh MELIHAT gambar
+    // (Dibutuhkan agar gambar tampil di website)
+    // =============================================
     match /{allPaths=**} {
       allow read: if true;
     }
 
-    // Hanya user yang sudah login yang boleh upload
-    // (Firestore 'admins' collection check tidak tersedia di Storage Rules,
-    //  tapi karena Firebase Auth sign-up sudah dinonaktifkan,
-    //  hanya akun yang terdaftar yang bisa login)
+    // =============================================
+    // ADMIN: Boleh upload, update, dan hapus gambar
+    //
+    // PENTING: Firebase Storage Rules TIDAK BISA
+    // mengecek koleksi Firestore 'admins'.
+    // Keamanan bergantung pada:
+    //   1. request.auth != null (harus login)
+    //   2. Pendaftaran akun baru DINONAKTIFKAN
+    //      di Firebase Console → Authentication →
+    //      Settings → User Actions → Matikan
+    //      "Allow users to sign up"
+    //
+    // Dengan sign-up dimatikan, hanya akun admin
+    // yang sudah ada yang bisa melewati auth check.
+    // =============================================
+
+    // Folder: gallery (upload foto galeri)
     match /gallery/{fileName} {
       allow write: if request.auth != null
+                   && request.resource != null
                    && request.resource.size < 10 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null;
     }
-    match /citumang/{fileName} {
-      allow write: if request.auth != null
-                   && request.resource.size < 10 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*');
-    }
+
+    // Folder: hero (upload foto hero desktop/mobile)
     match /hero/{fileName} {
       allow write: if request.auth != null
+                   && request.resource != null
                    && request.resource.size < 10 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null;
+    }
+
+    // Folder: provider (upload logo provider)
+    match /provider/{fileName} {
+      allow write: if request.auth != null
+                   && request.resource != null
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null;
+    }
+
+    // Folder: activities (upload foto aktivitas)
+    match /activities/{fileName} {
+      allow write: if request.auth != null
+                   && request.resource != null
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null;
+    }
+
+    // Folder: citumang (upload umum/default)
+    match /citumang/{fileName} {
+      allow write: if request.auth != null
+                   && request.resource != null
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null;
     }
   }
 }

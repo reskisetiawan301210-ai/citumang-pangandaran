@@ -1,12 +1,13 @@
 /**
  * GalleryModal.js
  * Merender foto galeri asli dan mengelola interaktivitas Lightbox
- * Termasuk dukungan keyboard navigation (ArrowLeft, ArrowRight, Escape) & touch swipe di mobile.
+ * Termasuk keyboard navigation (ArrowLeft, ArrowRight, Escape) & touch swipe di mobile.
  */
 
 import { galleryData } from '../data/gallery.js';
 
 let currentIdx = 0;
+let isModalListenersAttached = false;
 
 export function initGallery() {
   const container = document.getElementById('gallery-grid');
@@ -47,27 +48,11 @@ export function initGallery() {
           <h3 class="font-headline-sm text-headline-sm leading-tight mt-0.5">${item.title}</h3>
         </div>
         <span class="w-10 h-10 rounded-full bg-surface-container-lowest/20 backdrop-blur-md flex items-center justify-center group-hover:bg-secondary-fixed group-hover:text-primary transition-colors flex-shrink-0 ml-2">
-          <span class="material-symbols-outlined text-[20px]">fullscreen</span>
+          <span class="material-symbols-outlined text-[20px]" aria-hidden="true">fullscreen</span>
         </span>
       </div>
     </div>
   `).join('');
-
-  // Event listener klik pada kartu galeri
-  container.querySelectorAll('[data-gallery-index]').forEach(card => {
-    card.addEventListener('click', () => {
-      const idx = parseInt(card.getAttribute('data-gallery-index'), 10);
-      openLightbox(idx);
-    });
-    // Keyboard Enter / Space
-    card.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        const idx = parseInt(card.getAttribute('data-gallery-index'), 10);
-        openLightbox(idx);
-      }
-    });
-  });
 
   function openLightbox(index) {
     if (!modal) return;
@@ -114,53 +99,59 @@ export function initGallery() {
     }
   }
 
-  if (prevBtn) prevBtn.addEventListener('click', prevPhoto);
-  if (nextBtn) nextBtn.addEventListener('click', nextPhoto);
-  if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
+  // Event listener klik pada kartu galeri
+  container.querySelectorAll('[data-gallery-index]').forEach(card => {
+    card.addEventListener('click', () => {
+      const idx = parseInt(card.getAttribute('data-gallery-index'), 10);
+      openLightbox(idx);
+    });
+    // Keyboard Enter / Space
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const idx = parseInt(card.getAttribute('data-gallery-index'), 10);
+        openLightbox(idx);
+      }
+    });
+  });
 
-  // Close jika backdrop diklik
-  if (modal) {
+  // Pasang listener modal sekali saja untuk mencegah duplikasi event
+  if (!isModalListenersAttached && modal) {
+    isModalListenersAttached = true;
+
+    if (prevBtn) prevBtn.addEventListener('click', prevPhoto);
+    if (nextBtn) nextBtn.addEventListener('click', nextPhoto);
+    if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
+
     modal.addEventListener('click', (e) => {
       if (e.target === modal) {
         closeLightbox();
       }
     });
-  }
 
-  // Keyboard Navigation
-  document.addEventListener('keydown', (e) => {
-    if (modal && !modal.classList.contains('hidden')) {
-      if (e.key === 'Escape') closeLightbox();
-      if (e.key === 'ArrowRight') nextPhoto();
-      if (e.key === 'ArrowLeft') prevPhoto();
-    }
-  });
+    document.addEventListener('keydown', (e) => {
+      if (modal && !modal.classList.contains('hidden')) {
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowRight') nextPhoto();
+        if (e.key === 'ArrowLeft') prevPhoto();
+      }
+    });
 
-  // Touch Swipe Support di Mobile
-  let touchStartX = 0;
-  let touchEndX = 0;
+    // Touch Swipe Support di Mobile
+    let touchStartX = 0;
+    let touchEndX = 0;
 
-  if (modal) {
     modal.addEventListener('touchstart', (e) => {
       touchStartX = e.changedTouches[0].screenX;
     }, { passive: true });
 
     modal.addEventListener('touchend', (e) => {
       touchEndX = e.changedTouches[0].screenX;
-      handleGesture();
-    }, { passive: true });
-  }
-
-  function handleGesture() {
-    const delta = touchEndX - touchStartX;
-    if (Math.abs(delta) > 50) {
-      if (delta < 0) {
-        // swipe left -> next
-        nextPhoto();
-      } else {
-        // swipe right -> prev
-        prevPhoto();
+      const delta = touchEndX - touchStartX;
+      if (Math.abs(delta) > 50) {
+        if (delta < 0) nextPhoto();
+        else prevPhoto();
       }
-    }
+    }, { passive: true });
   }
 }

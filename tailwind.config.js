@@ -2,6 +2,8 @@
 export default {
   content: [
     "./index.html",
+    "./404.html",
+    "./{admin,faq,galeri,harga,lokasi,kebijakan-privasi,syarat-ketentuan}/**/*.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
