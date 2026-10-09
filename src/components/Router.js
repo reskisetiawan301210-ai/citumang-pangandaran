@@ -283,3 +283,4 @@ export function initRouter() {
     pageCache.set(initialPath, document.documentElement.outerHTML);
   }
 }
+
