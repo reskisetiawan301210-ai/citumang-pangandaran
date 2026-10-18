@@ -6,13 +6,13 @@
 
 export const providerData = {
   // Identitas & Jabatan
-  name: "Pengelola Resmi Citumang",
-  role: "Official Provider & Tour Coordinator",
+  name: "Pinggih Priatna",
+  role: "Pengelola & Penyedia Layanan Resmi Clean 01 Citumang",
   badge: "Provider Resmi Terverifikasi",
   experienceTag: "Pelayanan Wisata & Reservasi Resmi",
   
   // Deskripsi Faktual (tidak mengarang biodata pribadi)
-  description: "Koordinator layanan wisata dan pemesanan paket resmi Citumang Pangandaran. Siap melayani dan mendampingi kunjungan wisatawan untuk petualangan body rafting yang menyenangkan, aman, dan berkesan.",
+  description: "Pengelola dan koordinator penyedia layanan wisata resmi Clean 01 Citumang Pangandaran. Siap melayani reservasi tiket resmi, pemandu profesional, perlengkapan body rafting, dokumentasi, asuransi, dan sajian nasi liwet khas Citumang.",
   
   // Aset Foto Transparan (PNG & Modern WebP)
   image: "/images/provider/provider.png",

@@ -1,44 +1,128 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <!-- 1. Beranda -->
   <url>
     <loc>https://citumangpangandaran.web.id/</loc>
-    <lastmod>2026-10-09</lastmod>
+    <lastmod>2026-10-18</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://citumangpangandaran.web.id/images/citumang/hero.jpg</image:loc>
+      <image:title>Air Terjun dan Kolam Alami Clean 01 Citumang Pangandaran</image:title>
+      <image:caption>Wisata alam dan body rafting aliran sungai jernih di Clean 01 Citumang Pangandaran bersama pengelola resmi Pinggih Priatna.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://citumangpangandaran.web.id/images/provider/provider.png</image:loc>
+      <image:title>Pinggih Priatna - Pengelola Resmi Clean 01 Citumang Pangandaran</image:title>
+      <image:caption>Pengelola dan koordinator penyedia layanan wisata resmi Clean 01 Citumang Pangandaran.</image:caption>
+    </image:image>
   </url>
+
+  <!-- 2. Paket & Harga -->
   <url>
     <loc>https://citumangpangandaran.web.id/harga</loc>
-    <lastmod>2026-10-09</lastmod>
+    <lastmod>2026-10-18</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://citumangpangandaran.web.id/images/citumang/citumang-04.jpg</image:loc>
+      <image:title>Paket Body Rafting Clean 01 Citumang Pangandaran Mulai Rp69.000</image:title>
+      <image:caption>Aktivitas body rafting di antara dinding tebing batu karst Citumang Pangandaran mencakup 9 fasilitas lengkap.</image:caption>
+    </image:image>
   </url>
+
+  <!-- 3. Lokasi & Rute -->
   <url>
     <loc>https://citumangpangandaran.web.id/lokasi</loc>
-    <lastmod>2026-10-09</lastmod>
+    <lastmod>2026-10-18</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://citumangpangandaran.web.id/images/citumang/citumang-08.jpg</image:loc>
+      <image:title>Lokasi Kolam Alami Sungai Citumang Green Valley</image:title>
+      <image:caption>Pemandangan kolam alami sungai Citumang yang luas dengan air jernih di Desa Bojong, Parigi, Pangandaran.</image:caption>
+    </image:image>
   </url>
+
+  <!-- 4. Galeri Foto -->
   <url>
     <loc>https://citumangpangandaran.web.id/galeri</loc>
-    <lastmod>2026-10-09</lastmod>
+    <lastmod>2026-10-18</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://citumangpangandaran.web.id/images/citumang/citumang-01.jpg</image:loc>
+      <image:title>Aliran Sungai &amp; Air Terjun Citumang</image:title>
+      <image:caption>Aliran air sungai yang jernih dengan latar air terjun bertingkat dan wisatawan yang sedang berenang mengenakan rompi pelampung.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://citumangpangandaran.web.id/images/citumang/citumang-02.jpg</image:loc>
+      <image:title>Area Mulut Gua Karst Citumang</image:title>
+      <image:caption>Wisatawan anak dan dewasa mengenakan rompi pelampung di depan mulut gua karst alami Citumang.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://citumangpangandaran.web.id/images/citumang/citumang-03.jpg</image:loc>
+      <image:title>Berenang di Air Jernih Citumang</image:title>
+      <image:caption>Dua wisatawan berenang mengapung mengenakan rompi pelampung di aliran sungai Citumang yang jernih.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://citumangpangandaran.web.id/images/citumang/citumang-04.jpg</image:loc>
+      <image:title>Aktivitas di Tebing Karst Citumang</image:title>
+      <image:caption>Rombongan wisatawan mengenakan rompi pelampung di antara dinding tebing batu karst Citumang.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://citumangpangandaran.web.id/images/citumang/citumang-05.jpg</image:loc>
+      <image:title>Berenang Bersama Keluarga di Citumang</image:title>
+      <image:caption>Wisatawan dewasa dan anak berenang bersama menggunakan rompi pelampung di aliran sungai jernih.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://citumangpangandaran.web.id/images/citumang/citumang-06.jpg</image:loc>
+      <image:title>Berenang di Dalam Gua Karst Citumang</image:title>
+      <image:caption>Wisatawan berenang di dalam lorong gua karst alami yang dialiri air jernih tenang.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://citumangpangandaran.web.id/images/citumang/citumang-07.jpg</image:loc>
+      <image:title>Aliran Sungai di Bawah Pepohonan Citumang</image:title>
+      <image:caption>Wisatawan berenang di air sungai jernih di bawah naungan akar dan pepohonan tepi sungai.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://citumangpangandaran.web.id/images/citumang/citumang-08.jpg</image:loc>
+      <image:title>Kolam Alami Sungai Citumang</image:title>
+      <image:caption>Area kolam alami sungai yang luas dengan air jernih serta wisatawan yang sedang berenang.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://citumangpangandaran.web.id/images/citumang/citumang-09.jpg</image:loc>
+      <image:title>Aliran Sungai Alami Citumang</image:title>
+      <image:caption>Pemandangan aliran sungai dengan air jernih, wisatawan berenang di aliran sungai dinaungi pepohonan alami.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://citumangpangandaran.web.id/images/citumang/citumang-10.jpg</image:loc>
+      <image:title>Aktivitas Ayunan Tali di Air Terjun Citumang</image:title>
+      <image:caption>Wisatawan bergelantungan pada ayunan tali dan melompat ke dalam kolam alami di depan air terjun Citumang.</image:caption>
+    </image:image>
   </url>
+
+  <!-- 5. FAQ -->
   <url>
     <loc>https://citumangpangandaran.web.id/faq</loc>
-    <lastmod>2026-10-09</lastmod>
+    <lastmod>2026-10-18</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
+
+  <!-- 6. Kebijakan Privasi -->
   <url>
     <loc>https://citumangpangandaran.web.id/kebijakan-privasi</loc>
-    <lastmod>2026-10-09</lastmod>
+    <lastmod>2026-10-18</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
+
+  <!-- 7. Syarat & Ketentuan -->
   <url>
     <loc>https://citumangpangandaran.web.id/syarat-ketentuan</loc>
-    <lastmod>2026-10-09</lastmod>
+    <lastmod>2026-10-18</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
