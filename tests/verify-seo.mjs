@@ -11,6 +11,7 @@ const pages = [
   { file: 'lokasi/index.html', path: '/lokasi', is404: false, titleKeyword: 'Lokasi & Rute' },
   { file: 'galeri/index.html', path: '/galeri', is404: false, titleKeyword: 'Galeri Foto' },
   { file: 'faq/index.html', path: '/faq', is404: false, titleKeyword: 'FAQ' },
+  { file: 'pengelola/index.html', path: '/pengelola', is404: false, titleKeyword: 'Profil Pinggih Priatna' },
   { file: 'kebijakan-privasi/index.html', path: '/kebijakan-privasi', is404: false, titleKeyword: 'Kebijakan Privasi' },
   { file: 'syarat-ketentuan/index.html', path: '/syarat-ketentuan', is404: false, titleKeyword: 'Syarat & Ketentuan' },
   { file: '404.html', path: '/404', is404: true, titleKeyword: '404' }
@@ -141,7 +142,17 @@ check('index.html JSON-LD includes TouristAttraction schema', indexHtml.includes
 check('index.html JSON-LD includes LocalBusiness schema', indexHtml.includes('"@type": "LocalBusiness"'));
 check('Official WhatsApp number (0812-2132-5957) present', indexHtml.includes('0812-2132-5957'));
 
-// 3. Audit Sitemaps & Robots.txt
+// 3. Audit Pengelola Dedicated Page (Pinggih Priatna)
+console.log('\n--- Auditing Pengelola Dedicated Page (Pinggih Priatna) ---');
+const pengelolaHtml = fs.readFileSync(path.join(ROOT_DIR, 'pengelola/index.html'), 'utf-8');
+check('pengelola/index.html mentions Pinggih Priatna', pengelolaHtml.includes('Pinggih Priatna'));
+check('pengelola/index.html mentions Body Rafting provider role', pengelolaHtml.includes('Provider Body Rafting') || pengelolaHtml.includes('Pengelola & Provider'));
+check('pengelola/index.html includes Person JSON-LD schema', pengelolaHtml.includes('"@type": "Person"') || pengelolaHtml.includes('"@type":"Person"'));
+check('pengelola/index.html includes ProfilePage JSON-LD schema', pengelolaHtml.includes('"@type": "ProfilePage"') || pengelolaHtml.includes('"@type":"ProfilePage"'));
+check('pengelola/index.html links to WhatsApp 0812-2132-5957', pengelolaHtml.includes('0812-2132-5957'));
+check('pengelola/index.html has canonical to /pengelola with www', pengelolaHtml.includes('https://www.citumangpangandaran.web.id/pengelola'));
+
+// 4. Audit Sitemaps & Robots.txt
 console.log('\n--- Auditing Sitemap & Robots.txt ---');
 const sitemapPath = path.join(ROOT_DIR, 'public', 'sitemap.xml');
 check('public/sitemap.xml exists', fs.existsSync(sitemapPath));
@@ -154,6 +165,7 @@ if (fs.existsSync(sitemapPath)) {
   check('Sitemap maps /lokasi with www', sm.includes('<loc>https://www.citumangpangandaran.web.id/lokasi</loc>'));
   check('Sitemap maps /galeri with www', sm.includes('<loc>https://www.citumangpangandaran.web.id/galeri</loc>'));
   check('Sitemap maps /faq with www', sm.includes('<loc>https://www.citumangpangandaran.web.id/faq</loc>'));
+  check('Sitemap maps /pengelola with www', sm.includes('<loc>https://www.citumangpangandaran.web.id/pengelola</loc>'));
   check('Sitemap has <image:image> tags', sm.includes('<image:image>') && sm.includes('<image:loc>'));
   check('Sitemap includes hero image', sm.includes('/images/citumang/hero.jpg'));
   check('Sitemap includes provider photo', sm.includes('/images/provider/provider.png'));

@@ -10,12 +10,12 @@
     <image:image>
       <image:loc>https://www.citumangpangandaran.web.id/images/citumang/hero.jpg</image:loc>
       <image:title>Air Terjun dan Kolam Alami Citumang Pangandaran</image:title>
-      <image:caption>Wisata alam dan body rafting aliran sungai jernih di Citumang Pangandaran bersama pengelola resmi Pinggih Priatna.</image:caption>
+      <image:caption>Wisata alam dan body rafting aliran sungai jernih di Citumang Pangandaran bersama pengelola Pinggih Priatna.</image:caption>
     </image:image>
     <image:image>
       <image:loc>https://www.citumangpangandaran.web.id/images/provider/provider.png</image:loc>
-      <image:title>Pinggih Priatna - Pengelola Resmi Citumang Pangandaran</image:title>
-      <image:caption>Pengelola dan koordinator penyedia layanan wisata resmi Citumang Pangandaran.</image:caption>
+      <image:title>Pinggih Priatna - Pengelola dan Provider Wisata Citumang Pangandaran</image:title>
+      <image:caption>Pengelola dan koordinator penyedia layanan wisata body rafting Citumang Pangandaran.</image:caption>
     </image:image>
   </url>
 
@@ -109,6 +109,19 @@
     <lastmod>2026-10-18</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+  </url>
+
+  <!-- 6. Profil Pengelola (Pinggih Priatna) -->
+  <url>
+    <loc>https://www.citumangpangandaran.web.id/pengelola</loc>
+    <lastmod>2026-10-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <image:image>
+      <image:loc>https://www.citumangpangandaran.web.id/images/provider/provider.png</image:loc>
+      <image:title>Pinggih Priatna - Pengelola dan Provider Wisata Citumang Pangandaran</image:title>
+      <image:caption>Profil Pinggih Priatna, pengelola dan provider body rafting Citumang Pangandaran di Desa Bojong, Parigi.</image:caption>
+    </image:image>
   </url>
 
   <!-- 6. Kebijakan Privasi -->

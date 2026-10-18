@@ -9,12 +9,12 @@ export const siteConfig = {
   name: "Citumang Pangandaran",
   brandName: "Citumang Pangandaran",
   tagline: "Wisata Alam & Body Rafting Pangandaran",
-  description: "Wisata alam dan body rafting aliran sungai jernih di Citumang Pangandaran, Jawa Barat bersama pengelola resmi Pinggih Priatna dengan rute pengarungan ±1,5 KM, pemandu profesional, perlengkapan pelampung, asuransi, dan makan nasi liwet.",
+  description: "Wisata alam dan body rafting aliran sungai jernih di Citumang Pangandaran, Jawa Barat bersama pengelola Pinggih Priatna dengan rute pengarungan ±1,5 KM, pemandu lokal, perlengkapan pelampung, asuransi, dan makan nasi liwet.",
   url: "https://www.citumangpangandaran.web.id",
   manager: {
     name: "Pinggih Priatna",
-    role: "Pengelola & Penyedia Layanan Resmi",
-    title: "Pengelola Layanan Wisata Citumang Pangandaran"
+    role: "Pengelola & Provider Wisata Citumang Pangandaran",
+    title: "Pengelola & Provider Wisata Citumang Pangandaran"
   },
   pricing: {
     startingPrice: "Mulai dari Rp69.000",

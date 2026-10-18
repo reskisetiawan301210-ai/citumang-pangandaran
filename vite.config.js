@@ -25,6 +25,7 @@ export default defineConfig({
             '/lokasi': '/lokasi/index.html',
             '/galeri': '/galeri/index.html',
             '/faq': '/faq/index.html',
+            '/pengelola': '/pengelola/index.html',
             '/kebijakan-privasi': '/kebijakan-privasi/index.html',
             '/syarat-ketentuan': '/syarat-ketentuan/index.html',
           };
@@ -52,6 +53,7 @@ export default defineConfig({
             '/lokasi': '/lokasi/index.html',
             '/galeri': '/galeri/index.html',
             '/faq': '/faq/index.html',
+            '/pengelola': '/pengelola/index.html',
             '/kebijakan-privasi': '/kebijakan-privasi/index.html',
             '/syarat-ketentuan': '/syarat-ketentuan/index.html',
           };
@@ -76,6 +78,7 @@ export default defineConfig({
         lokasi: resolve(__dirname, 'lokasi/index.html'),
         galeri: resolve(__dirname, 'galeri/index.html'),
         faq: resolve(__dirname, 'faq/index.html'),
+        pengelola: resolve(__dirname, 'pengelola/index.html'),
         kebijakanPrivasi: resolve(__dirname, 'kebijakan-privasi/index.html'),
         syaratKetentuan: resolve(__dirname, 'syarat-ketentuan/index.html'),
         notFound: resolve(__dirname, '404.html'),
