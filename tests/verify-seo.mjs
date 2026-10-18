@@ -1,12 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 
-console.log('=== STARTING CLEAN 01 CITUMANG SEO VALIDATION SUITE ===\n');
+console.log('=== STARTING CITUMANG PANGANDARAN SEO VALIDATION SUITE ===\n');
 
 const ROOT_DIR = process.cwd();
 
 const pages = [
-  { file: 'index.html', path: '/', is404: false, titleKeyword: 'Clean 01 Citumang Pangandaran' },
+  { file: 'index.html', path: '/', is404: false, titleKeyword: 'Citumang Pangandaran' },
   { file: 'harga/index.html', path: '/harga', is404: false, titleKeyword: 'Paket & Harga' },
   { file: 'lokasi/index.html', path: '/lokasi', is404: false, titleKeyword: 'Lokasi & Rute' },
   { file: 'galeri/index.html', path: '/galeri', is404: false, titleKeyword: 'Galeri Foto' },
@@ -39,6 +39,9 @@ for (const p of pages) {
   if (!fs.existsSync(fullPath)) continue;
 
   const html = fs.readFileSync(fullPath, 'utf-8');
+
+  // Verify no "Clean 01" in any active page
+  check(`No 'Clean 01' brand in ${p.file}`, !html.includes('Clean 01'));
 
   // Title tag
   const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
@@ -74,7 +77,7 @@ for (const p of pages) {
     const canonicalMatch = html.match(/<link\s+rel=["']canonical["']\s+href=["']([^"']+)["']/i);
     check(`Canonical tag present`, !!canonicalMatch);
     if (canonicalMatch) {
-      check(`Canonical is absolute URL`, canonicalMatch[1].startsWith('https://citumangpangandaran.web.id'));
+      check(`Canonical is absolute URL with www`, canonicalMatch[1].startsWith('https://www.citumangpangandaran.web.id'));
     }
   }
 
@@ -87,9 +90,9 @@ for (const p of pages) {
     check(`og:title present`, html.includes('property="og:title"'));
     check(`og:description present`, html.includes('property="og:description"'));
     check(`og:image present`, html.includes('property="og:image"'));
-    check(`og:url present`, html.includes('property="og:url"'));
+    check(`og:url present with www`, html.includes('https://www.citumangpangandaran.web.id'));
     check(`og:site_name present`, html.includes('property="og:site_name"'));
-    check(`og:site_name has Clean 01 Citumang`, html.includes('content="Clean 01 Citumang Pangandaran"'));
+    check(`og:site_name has Citumang Pangandaran`, html.includes('content="Citumang Pangandaran"'));
 
     // Twitter
     check(`twitter:card present`, html.includes('name="twitter:card"'));
@@ -146,15 +149,16 @@ if (fs.existsSync(sitemapPath)) {
   const sm = fs.readFileSync(sitemapPath, 'utf-8');
   check('Sitemap has XML declaration', sm.startsWith('<?xml'));
   check('Sitemap has image namespace', sm.includes('xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"'));
-  check('Sitemap maps homepage', sm.includes('<loc>https://citumangpangandaran.web.id/</loc>'));
-  check('Sitemap maps /harga', sm.includes('<loc>https://citumangpangandaran.web.id/harga</loc>'));
-  check('Sitemap maps /lokasi', sm.includes('<loc>https://citumangpangandaran.web.id/lokasi</loc>'));
-  check('Sitemap maps /galeri', sm.includes('<loc>https://citumangpangandaran.web.id/galeri</loc>'));
-  check('Sitemap maps /faq', sm.includes('<loc>https://citumangpangandaran.web.id/faq</loc>'));
+  check('Sitemap maps homepage with www', sm.includes('<loc>https://www.citumangpangandaran.web.id/</loc>'));
+  check('Sitemap maps /harga with www', sm.includes('<loc>https://www.citumangpangandaran.web.id/harga</loc>'));
+  check('Sitemap maps /lokasi with www', sm.includes('<loc>https://www.citumangpangandaran.web.id/lokasi</loc>'));
+  check('Sitemap maps /galeri with www', sm.includes('<loc>https://www.citumangpangandaran.web.id/galeri</loc>'));
+  check('Sitemap maps /faq with www', sm.includes('<loc>https://www.citumangpangandaran.web.id/faq</loc>'));
   check('Sitemap has <image:image> tags', sm.includes('<image:image>') && sm.includes('<image:loc>'));
   check('Sitemap includes hero image', sm.includes('/images/citumang/hero.jpg'));
   check('Sitemap includes provider photo', sm.includes('/images/provider/provider.png'));
   check('Sitemap includes citumang-01 to citumang-10', sm.includes('citumang-01.jpg') && sm.includes('citumang-10.jpg'));
+  check('Sitemap has NO Clean 01 occurrences', !sm.includes('Clean 01'));
 }
 
 const robotsPath = path.join(ROOT_DIR, 'public', 'robots.txt');
@@ -163,7 +167,7 @@ if (fs.existsSync(robotsPath)) {
   const rb = fs.readFileSync(robotsPath, 'utf-8');
   check('robots.txt allows all crawlers', rb.includes('User-agent: *') && rb.includes('Allow: /'));
   check('robots.txt disallows /admin', rb.includes('Disallow: /admin'));
-  check('robots.txt points to sitemap', rb.includes('Sitemap: https://citumangpangandaran.web.id/sitemap.xml'));
+  check('robots.txt points to www sitemap', rb.includes('Sitemap: https://www.citumangpangandaran.web.id/sitemap.xml'));
 }
 
 console.log(`\n==============================================`);

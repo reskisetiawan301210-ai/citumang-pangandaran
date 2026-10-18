@@ -1,19 +1,20 @@
 /**
  * Site Configuration
- * Pusat konfigurasi seluruh informasi website Clean 01 Citumang Pangandaran
+ * Pusat konfigurasi seluruh informasi website Citumang Pangandaran
  * Pengelola Resmi: Pinggih Priatna
  * Semua aset gambar menggunakan foto asli lokal dari folder public/images/citumang/
  */
 
 export const siteConfig = {
-  name: "Clean 01 Citumang Pangandaran",
-  brandName: "Clean 01 Citumang",
-  tagline: "Body Rafting & Wisata Alam Pangandaran",
-  description: "Wisata alam dan body rafting aliran sungai jernih di Citumang Pangandaran, Jawa Barat. Layanan resmi Clean 01 bersama Pinggih Priatna dengan rute pengarungan ±1,5 KM, pemandu profesional, perlengkapan pelampung, asuransi, dan makan nasi liwet.",
+  name: "Citumang Pangandaran",
+  brandName: "Citumang Pangandaran",
+  tagline: "Wisata Alam & Body Rafting Pangandaran",
+  description: "Wisata alam dan body rafting aliran sungai jernih di Citumang Pangandaran, Jawa Barat bersama pengelola resmi Pinggih Priatna dengan rute pengarungan ±1,5 KM, pemandu profesional, perlengkapan pelampung, asuransi, dan makan nasi liwet.",
+  url: "https://www.citumangpangandaran.web.id",
   manager: {
     name: "Pinggih Priatna",
     role: "Pengelola & Penyedia Layanan Resmi",
-    title: "Pengelola Layanan Wisata Clean 01 Citumang"
+    title: "Pengelola Layanan Wisata Citumang Pangandaran"
   },
   pricing: {
     startingPrice: "Mulai dari Rp69.000",

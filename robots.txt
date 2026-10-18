@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin/
 Disallow: /admin
 
-Sitemap: https://citumangpangandaran.web.id/sitemap.xml
+Sitemap: https://www.citumangpangandaran.web.id/sitemap.xml
